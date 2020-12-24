@@ -54,3 +54,4 @@ func (suite *RaftLogTestSuite) TestWrite() {
 	assert.Greater(suite.T(), len(logs), 0)
 	assert.Equal(suite.T(), log, logs[0])
 }
+
