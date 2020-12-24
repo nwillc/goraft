@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"io/ioutil"
 	"testing"
 )
 
@@ -15,7 +16,9 @@ type RaftLogTestSuite struct {
 
 func (suite *RaftLogTestSuite) SetupTest() {
 	suite.T().Helper()
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+	f, err := ioutil.TempFile("", "test*.db")
+	assert.NoError(suite.T(), err)
+	db, err := gorm.Open(sqlite.Open(f.Name()), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
