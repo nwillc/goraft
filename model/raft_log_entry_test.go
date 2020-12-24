@@ -6,6 +6,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -25,9 +26,10 @@ func (suite *RaftLogTestSuite) SetupTest() {
 	suite.T().Cleanup(func() {
 		sqlDb, _ := db.DB()
 		_ = sqlDb.Close()
+		_ = os.Remove(f.Name())
 	})
 	suite.db = db
-	err = suite.db.AutoMigrate(&RaftLog{})
+	err = suite.db.AutoMigrate(&RaftLogEntry{})
 	assert.NoError(suite.T(), err)
 }
 
@@ -37,21 +39,22 @@ func TestRaftLogTestSuite(t *testing.T) {
 
 func (suite *RaftLogTestSuite) TestSanity() {
 	assert.NotNil(suite.T(), suite.db)
-	empty := RaftLog{}
+	empty := RaftLogEntry{}
 	assert.Equal(suite.T(), uint(0), empty.Value)
 }
 
 func (suite *RaftLogTestSuite) TestWrite() {
 	// Create a person
-	log := RaftLog{Value: uint(42)}
+	log := RaftLogEntry{Value: uint(42)}
+	assert.Equal(suite.T(), uint(0), log.ID)
 
 	// Persist it to database
 	suite.db.Create(&log)
+	assert.NotEqual(suite.T(), uint(0), log.ID)
 
 	// Select all
-	var logs []RaftLog
-	suite.db.Find(&logs)
-	assert.Greater(suite.T(), len(logs), 0)
+	var logs []RaftLogEntry
+	suite.db.Where("id = ?", log.ID).Find(&logs)
+	assert.Equal(suite.T(), 1, len(logs))
 	assert.Equal(suite.T(), log, logs[0])
 }
-
