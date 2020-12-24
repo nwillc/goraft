@@ -1,6 +1,6 @@
 package model
 
 type RaftLogEntry struct {
-	ID    uint `json:"id", gorm:"primaryKey"`
-	Value uint `json:"value"`
+	Position uint `json:"position" gorm:"primaryKey"`
+	Value    uint `json:"value"`
 }
