@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package raftapi;
+option go_package = ".;raftapi";
+
+message Bool { bool status = 1; }
+
+message RequestVoteRequest {
+
+}
+
+service RaftService {
+  rpc RequestVote(RequestVoteRequest) returns (Bool) {}
+}
