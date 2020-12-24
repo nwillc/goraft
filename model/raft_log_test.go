@@ -48,6 +48,6 @@ func (suite *RaftLogTestSuite) TestWrite() {
 	// Select all
 	var logs []RaftLog
 	suite.db.Find(&logs)
-	assert.Greater(suite.T(), logs, 0)
+	assert.Greater(suite.T(), len(logs), 0)
 	assert.Equal(suite.T(), log, logs[0])
 }
