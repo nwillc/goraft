@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/nwillc/goraft/api/raftapi"
+	"github.com/nwillc/goraft/model"
 	"google.golang.org/grpc"
 	"log"
 	"net"
-)
-
-const (
-	port = ":50051"
 )
 
 type server struct {
@@ -17,8 +15,14 @@ type server struct {
 }
 
 func main() {
-	log.Println("Start", port)
+	log.Println("Start")
 
+	config, err := model.ReadConfig("config.json")
+	if err != nil {
+		log.Fatalln("can not read config")
+	}
+
+	port := fmt.Sprintf(":%d", config.Members[0].Port)
 	listen, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalln(err)
