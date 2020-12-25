@@ -26,7 +26,6 @@ func main() {
 	srv := grpc.NewServer()
 	raftapi.RegisterRaftServiceServer(srv, &server{})
 	log.Fatalln(srv.Serve(listen))
-	log.Println("Stop")
 }
 
 func (s *server) Ping(ctx context.Context, request *raftapi.Empty) (*raftapi.Bool, error) {
