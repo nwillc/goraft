@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/nwillc/goraft/setup"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -24,12 +25,11 @@ func (suite *ConfigTestSuite) TestFailBadFile() {
 }
 
 func (suite *ConfigTestSuite) TestReadConfig() {
-	config, err := ReadConfig("../config.json")
+	config, err := ReadConfig("../" + setup.ConfigFile)
 	assert.NoError(suite.T(), err)
 	assert.Less(suite.T(), uint(0), config.Term)
 	assert.Equal(suite.T(), config.Term, uint(len(config.Members)))
 	for _, member := range config.Members {
-		assert.NotEmpty(suite.T(), member.Name)
 		assert.Less(suite.T(), uint(0), member.Port)
 	}
 }

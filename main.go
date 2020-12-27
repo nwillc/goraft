@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"github.com/nwillc/goraft/api/raftapi"
 	"github.com/nwillc/goraft/model"
+	"github.com/nwillc/goraft/setup"
 	"google.golang.org/grpc"
 	"log"
 	"net"
+	"os"
 )
 
 type server struct {
@@ -15,6 +18,11 @@ type server struct {
 }
 
 func main() {
+	flag.Parse()
+	if *setup.Flags.Version {
+		fmt.Printf("version %s\n", "unknown")
+		os.Exit(setup.NormalExit)
+	}
 	log.Println("Start")
 
 	config, err := model.ReadConfig("config.json")
@@ -22,8 +30,12 @@ func main() {
 		log.Fatalln("can not read config")
 	}
 
-	port := fmt.Sprintf(":%d", config.Members[0].Port)
-	listen, err := net.Listen("tcp", port)
+	member, ok := config.Members[*setup.Flags.Member]
+	if !ok {
+		log.Fatalln("No config for member:", *setup.Flags.Member)
+	}
+	log.Printf("Starting member %s on port %d.\n", *setup.Flags.Member, member.Port)
+	listen, err := net.Listen("tcp", member.Address())
 	if err != nil {
 		log.Fatalln(err)
 	}

@@ -2,18 +2,18 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 )
 
 type Member struct {
-	Name string `json:"name"`
 	Port uint   `json:"port"`
 }
 
 type Config struct {
 	Term    uint     `json:"term"`
-	Members []Member `json:"members"`
+	Members map[string]Member `json:"members"`
 }
 
 func ReadConfig(filename string) (Config, error) {
@@ -31,4 +31,8 @@ func ReadConfig(filename string) (Config, error) {
 		return Config{}, err
 	}
 	return config, nil
+}
+
+func (m *Member) Address() string {
+	return fmt.Sprintf(":%d", m.Port)
 }
