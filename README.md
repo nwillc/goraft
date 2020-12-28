@@ -1,3 +1,3 @@
-# Go RAFT
+# Go Raft 
 
-A toy RAFT consensus protocol implementation in Go.
+A toy Raft consensus protocol implementation in Go.
