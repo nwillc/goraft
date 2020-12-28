@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"github.com/nwillc/goraft/api/raftapi"
 	"github.com/nwillc/goraft/model"
-	"github.com/nwillc/goraft/setup"
-	"google.golang.org/grpc"
 	"log"
-	"net"
 	"os"
 )
 
@@ -18,10 +15,11 @@ type server struct {
 }
 
 func main() {
+	SetupMemberCli()
 	flag.Parse()
-	if *setup.Flags.Version {
+	if *MemberCli.Version {
 		fmt.Printf("version %s\n", "unknown")
-		os.Exit(setup.NormalExit)
+		os.Exit(NormalExit)
 	}
 	log.Println("Start")
 
@@ -30,18 +28,12 @@ func main() {
 		log.Fatalln("can not read config")
 	}
 
-	member, ok := config.Members[*setup.Flags.Member]
+	member, ok := config.Members[*MemberCli.Member]
 	if !ok {
-		log.Fatalln("No config for member:", *setup.Flags.Member)
+		log.Fatalln("No config for member:", *MemberCli.Member)
 	}
-	log.Printf("Starting member %s on port %d.\n", *setup.Flags.Member, member.Port)
-	listen, err := net.Listen("tcp", member.Address())
-	if err != nil {
-		log.Fatalln(err)
-	}
-	srv := grpc.NewServer()
-	raftapi.RegisterRaftServiceServer(srv, &server{})
-	log.Fatalln(srv.Serve(listen))
+	log.Printf("Starting member %s on port %d.\n", *MemberCli.Member, member.Port)
+	log.Fatalln(member.Listen())
 }
 
 func (s *server) Ping(ctx context.Context, request *raftapi.Empty) (*raftapi.Bool, error) {

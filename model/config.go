@@ -2,13 +2,13 @@ package model
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/nwillc/goraft/api/raftapi"
 	"io/ioutil"
 	"os"
 )
 
-type Member struct {
-	Port uint   `json:"port"`
+type server struct {
+	raftapi.UnimplementedRaftServiceServer
 }
 
 type Config struct {
@@ -31,8 +31,4 @@ func ReadConfig(filename string) (Config, error) {
 		return Config{}, err
 	}
 	return config, nil
-}
-
-func (m *Member) Address() string {
-	return fmt.Sprintf(":%d", m.Port)
 }
