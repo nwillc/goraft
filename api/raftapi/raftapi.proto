@@ -3,15 +3,18 @@ syntax = "proto3";
 package raftapi;
 option go_package = ".;raftapi";
 
-message Empty {}
+message Empty{}
+
+message WhoAmI {
+  string name = 1;
+  uint32 port = 2;
+}
 
 message Bool { bool status = 1; }
 
-message RequestVoteRequest {
-
-}
+message RequestVoteRequest {}
 
 service RaftService {
-  rpc Ping(Empty) returns (Bool) {}
+  rpc Ping(Empty) returns (WhoAmI) {}
   rpc RequestVote(RequestVoteRequest) returns (Bool) {}
 }
