@@ -1,25 +1,20 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
-	"github.com/nwillc/goraft/api/raftapi"
+	"github.com/nwillc/goraft/conf"
 	"github.com/nwillc/goraft/model"
 	"log"
 	"os"
 )
 
-type server struct {
-	raftapi.UnimplementedRaftServiceServer
-}
-
 func main() {
-	SetupMemberCli()
+	conf.SetupMemberCli()
 	flag.Parse()
-	if *MemberCli.Version {
+	if *conf.MemberCli.Version {
 		fmt.Printf("version %s\n", "unknown")
-		os.Exit(NormalExit)
+		os.Exit(conf.NormalExit)
 	}
 	log.Println("Start")
 
@@ -28,14 +23,11 @@ func main() {
 		log.Fatalln("can not read config")
 	}
 
-	member, ok := config.Members[*MemberCli.Member]
+	member, ok := config.Members[*conf.MemberCli.Member]
 	if !ok {
-		log.Fatalln("No config for member:", *MemberCli.Member)
+		log.Fatalln("No config for member:", *conf.MemberCli.Member)
 	}
-	log.Printf("Starting member %s on port %d.\n", *MemberCli.Member, member.Port)
-	log.Fatalln(member.Listen())
+	log.Printf("Starting member %s on port %d.\n", *conf.MemberCli.Member, member.Port)
+	log.Fatalln(member.Listen(*conf.MemberCli.Member))
 }
 
-func (s *server) Ping(ctx context.Context, request *raftapi.Empty) (*raftapi.Bool, error) {
-	return &raftapi.Bool{Status: true}, nil
-}

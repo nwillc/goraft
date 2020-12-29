@@ -14,8 +14,9 @@ var ClientCli struct {
 }
 
 func SetupClientCli()  {
-	ClientCli.Member = flag.String("member", "one", "The member name.")
+	ClientCli.Member = flag.String("member", "none", "The member name.")
 }
+
 func main() {
 	SetupClientCli()
 	flag.Parse()
@@ -41,6 +42,6 @@ func main() {
 	if err != nil {
 		log.Fatal("Ping failed: ", err)
 	}
-	log.Println("response: ", response.Status)
+	log.Println("response: ", response.Name, ":", response.Port)
 	log.Println("End")
 }

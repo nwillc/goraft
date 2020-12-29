@@ -15,7 +15,7 @@
  *
  */
 
-package main
+package conf
 
 // Program exit codes.
 const (

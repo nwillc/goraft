@@ -2,14 +2,9 @@ package model
 
 import (
 	"encoding/json"
-	"github.com/nwillc/goraft/api/raftapi"
 	"io/ioutil"
 	"os"
 )
-
-type server struct {
-	raftapi.UnimplementedRaftServiceServer
-}
 
 type Config struct {
 	Term    uint     `json:"term"`

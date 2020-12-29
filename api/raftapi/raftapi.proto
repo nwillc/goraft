@@ -3,18 +3,33 @@ syntax = "proto3";
 package raftapi;
 option go_package = ".;raftapi";
 
+/*
+  Basic Types
+ */
 message Empty{}
+
+message Bool { bool status = 1; }
+
+/*
+  Management Messages
+ */
 
 message WhoAmI {
   string name = 1;
   uint32 port = 2;
 }
 
-message Bool { bool status = 1; }
-
+/*
+  Raft Protocol Messages
+ */
 message RequestVoteRequest {}
 
+message AppendEntryRequest {}
+
 service RaftService {
+  // Management Requests
   rpc Ping(Empty) returns (WhoAmI) {}
+  // Raft Requests
   rpc RequestVote(RequestVoteRequest) returns (Bool) {}
+  rpc AppendEntry(AppendEntryRequest) returns (Bool) {}
 }
