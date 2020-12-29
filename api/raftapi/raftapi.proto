@@ -22,13 +22,25 @@ message WhoAmI {
 /*
   Raft Protocol Messages
  */
-message RequestVoteRequest {}
+message RequestVoteRequest {
+  uint32 term = 1;
+  string candidate = 2;
+  uint32 logSize = 3;
+  uint32 lastLogTerm = 4;
+}
 
-message AppendEntryRequest {}
+message AppendEntryRequest {
+  uint32 term = 1;
+  string leader = 2;
+  uint32 logSize = 3;
+  uint32 lastLogTerm = 4;
+}
 
 service RaftService {
   // Management Requests
   rpc Ping(Empty) returns (WhoAmI) {}
+  rpc Shutdown(Empty) returns (Bool) {}
+
   // Raft Requests
   rpc RequestVote(RequestVoteRequest) returns (Bool) {}
   rpc AppendEntry(AppendEntryRequest) returns (Bool) {}

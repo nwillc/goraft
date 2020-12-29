@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 type RaftServiceClient interface {
 	// Management Requests
 	Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*WhoAmI, error)
+	Shutdown(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Bool, error)
 	// Raft Requests
 	RequestVote(ctx context.Context, in *RequestVoteRequest, opts ...grpc.CallOption) (*Bool, error)
 	AppendEntry(ctx context.Context, in *AppendEntryRequest, opts ...grpc.CallOption) (*Bool, error)
@@ -35,6 +36,15 @@ func NewRaftServiceClient(cc grpc.ClientConnInterface) RaftServiceClient {
 func (c *raftServiceClient) Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*WhoAmI, error) {
 	out := new(WhoAmI)
 	err := c.cc.Invoke(ctx, "/raftapi.RaftService/Ping", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *raftServiceClient) Shutdown(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Bool, error) {
+	out := new(Bool)
+	err := c.cc.Invoke(ctx, "/raftapi.RaftService/Shutdown", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +75,7 @@ func (c *raftServiceClient) AppendEntry(ctx context.Context, in *AppendEntryRequ
 type RaftServiceServer interface {
 	// Management Requests
 	Ping(context.Context, *Empty) (*WhoAmI, error)
+	Shutdown(context.Context, *Empty) (*Bool, error)
 	// Raft Requests
 	RequestVote(context.Context, *RequestVoteRequest) (*Bool, error)
 	AppendEntry(context.Context, *AppendEntryRequest) (*Bool, error)
@@ -77,6 +88,9 @@ type UnimplementedRaftServiceServer struct {
 
 func (UnimplementedRaftServiceServer) Ping(context.Context, *Empty) (*WhoAmI, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedRaftServiceServer) Shutdown(context.Context, *Empty) (*Bool, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Shutdown not implemented")
 }
 func (UnimplementedRaftServiceServer) RequestVote(context.Context, *RequestVoteRequest) (*Bool, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestVote not implemented")
@@ -111,6 +125,24 @@ func _RaftService_Ping_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RaftServiceServer).Ping(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RaftService_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RaftServiceServer).Shutdown(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/raftapi.RaftService/Shutdown",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RaftServiceServer).Shutdown(ctx, req.(*Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -158,6 +190,10 @@ var _RaftService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Ping",
 			Handler:    _RaftService_Ping_Handler,
+		},
+		{
+			MethodName: "Shutdown",
+			Handler:    _RaftService_Shutdown_Handler,
 		},
 		{
 			MethodName: "RequestVote",

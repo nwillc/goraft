@@ -1,20 +1,25 @@
 {
   "term": 5,
-  "members": {
-    "one": {
+  "members": [
+    {
+      "name": "one",
       "port": 50051
     },
-    "two": {
+    {
+      "name": "two",
       "port": 50052
     },
-    "three": {
+    {
+      "name": "three",
       "port": 50053
     },
-    "four": {
+    {
+      "name": "four",
       "port": 50054
     },
-    "five": {
+    {
+      "name": "five",
       "port": 50055
     }
-  }
+  ]
 }

@@ -8,7 +8,7 @@ import (
 
 type Config struct {
 	Term    uint     `json:"term"`
-	Members map[string]Member `json:"members"`
+	Members []Member `json:"members"`
 }
 
 func ReadConfig(filename string) (Config, error) {

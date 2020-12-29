@@ -30,6 +30,7 @@ func (suite *ConfigTestSuite) TestReadConfig() {
 	assert.Less(suite.T(), uint(0), config.Term)
 	assert.Equal(suite.T(), config.Term, uint(len(config.Members)))
 	for _, member := range config.Members {
+		assert.NotEmpty(suite.T(), member.Name)
 		assert.Less(suite.T(), uint32(0), member.Port)
 	}
 }

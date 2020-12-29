@@ -23,11 +23,19 @@ func main() {
 		log.Fatalln("can not read config")
 	}
 
-	member, ok := config.Members[*conf.MemberCli.Member]
+	var member model.Member
+	ok := false
+	for _, m := range config.Members {
+		if m.Name == *conf.MemberCli.Member {
+			ok = true
+			member = m
+			break
+		}
+	}
 	if !ok {
 		log.Fatalln("No config for member:", *conf.MemberCli.Member)
 	}
-	log.Printf("Starting member %s on port %d.\n", *conf.MemberCli.Member, member.Port)
+	log.Printf("Starting member: %s\n", member.String())
 	log.Fatalln(member.Listen(*conf.MemberCli.Member))
 }
 
