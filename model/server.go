@@ -25,17 +25,21 @@ type Server struct {
 	lastHeartbeat time.Time
 	term          uint32
 	role          Role
+	electionWait  time.Duration
+	votedOn       uint32
 }
 
 // Server implements fmt.Stringer
 var _ fmt.Stringer = (*  Server)(nil)
 
-func NewServer(member Member, config Config) *Server {
+func NewServer(member Member, config Config, offset int) *Server {
 	return &Server{
 		member:        member,
 		config:        config,
 		lastHeartbeat: time.Now(),
 		role:          Follower,
+		electionWait:  time.Duration(int(config.Election)+(offset*15)) * time.Millisecond,
+		votedOn:       uint32(0),
 	}
 }
 
@@ -43,7 +47,7 @@ func NewServer(member Member, config Config) *Server {
   Management Functions
 */
 
-func (s *Server) Ping(ctx context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI, error) {
+func (s *Server) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI, error) {
 	log.Println("Ping")
 	return &raftapi.WhoAmI{
 		Name: s.member.Name,
@@ -51,7 +55,7 @@ func (s *Server) Ping(ctx context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI, e
 	}, nil
 }
 
-func (s *Server) Shutdown(ctx context.Context, _ *raftapi.Empty) (*raftapi.Bool, error) {
+func (s *Server) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Bool, error) {
 	log.Println("Shutdown")
 	defer func() {
 		os.Exit(0)
@@ -63,8 +67,12 @@ func (s *Server) Shutdown(ctx context.Context, _ *raftapi.Empty) (*raftapi.Bool,
   Raft Protocol Functions
 */
 
-func (s *Server) RequestVote(ctx context.Context, request *raftapi.RequestVoteRequest) (*raftapi.Bool, error) {
-	return &raftapi.Bool{Status: true}, nil
+func (s *Server) RequestVote(_ context.Context, request *raftapi.RequestVoteRequest) (*raftapi.Bool, error) {
+	approve := s.votedOn < request.Term
+	if approve {
+		s.votedOn = request.Term
+	}
+	return &raftapi.Bool{Status: approve}, nil
 }
 
 /*
@@ -99,12 +107,26 @@ func (s *Server) monitorHeartbeat() {
 }
 
 func (s *Server) runElection() {
-	s.term += 1
+	if s.role == Leader {
+		return
+	}
+	var votes = 1
 	for _, member := range s.config.Members {
 		if s.member.Name == member.Name {
 			continue
 		}
-		response, err := member.RequestVote(s)
-		log.Println("Response:", response, "Error:", err)
+		vote, err := member.RequestVote(s)
+		log.Println("Vote:", vote, "Error:", err)
+		if err != nil {
+			continue
+		}
+		if vote {
+			votes += 1
+		}
+	}
+	if votes > len(s.config.Members)/2 {
+		log.Println("ALL YOUR BASE ARE BELONG TO US!")
+		s.role = Leader
+		s.term += 1
 	}
 }

@@ -36,7 +36,7 @@ func (m *Member) RequestVote(s *Server) (bool, error){
 	api := raftapi.NewRaftServiceClient(conn)
 	ctx := context.Background()
 	response, err := api.RequestVote(ctx, &raftapi.RequestVoteRequest{
-		Term:        s.term,
+		Term:        s.term + 1,
 		Candidate:   s.member.Name,
 		LogSize:     0,
 		LastLogTerm: 0,

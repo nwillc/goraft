@@ -9,8 +9,6 @@ import (
 type Config struct {
 	HeartBeat             uint     `json:"heartBeat"`
 	Election              uint     `json:"election"`
-	MinElectionMultiplier uint     `json:"minElectionMultiplier"`
-	MaxElectionMultiplier uint     `json:"maxElectionMultiplier"`
 	Members               []Member `json:"members"`
 }
 

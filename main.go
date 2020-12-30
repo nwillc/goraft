@@ -24,17 +24,19 @@ func main() {
 	}
 
 	var member model.Member
-	ok := false
-	for _, m := range config.Members {
+	var ok = false
+	var salt = 0
+	for i, m := range config.Members {
 		if m.Name == *conf.MemberCli.Member {
 			ok = true
 			member = m
+			salt = i
 			break
 		}
 	}
 	if !ok {
 		log.Fatalln("No config for member:", *conf.MemberCli.Member)
 	}
-	srv :=model.NewServer(member, config)
+	srv := model.NewServer(member, config, salt)
 	log.Fatalln(srv.Run())
 }
