@@ -1,5 +1,8 @@
 {
-  "term": 5,
+  "heartBeat": 200,
+  "election": 1000,
+  "minElectionMultiplier": 1,
+  "maxElectionMultiplier": 5,
   "members": [
     {
       "name": "one",

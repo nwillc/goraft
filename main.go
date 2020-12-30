@@ -35,7 +35,8 @@ func main() {
 	if !ok {
 		log.Fatalln("No config for member:", *conf.MemberCli.Member)
 	}
+	srv :=model.NewServer(member)
 	log.Printf("Starting member: %s\n", member.String())
-	log.Fatalln(member.Listen(*conf.MemberCli.Member))
+	log.Fatalln(srv.Run())
 }
 

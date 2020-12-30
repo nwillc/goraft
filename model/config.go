@@ -7,8 +7,11 @@ import (
 )
 
 type Config struct {
-	Term    uint     `json:"term"`
-	Members []Member `json:"members"`
+	HeartBeat             uint     `json:"heartBeat"`
+	Election              uint     `json:"election"`
+	MinElectionMultiplier uint     `json:"minElectionMultiplier"`
+	MaxElectionMultiplier uint     `json:"maxElectionMultiplier"`
+	Members               []Member `json:"members"`
 }
 
 func ReadConfig(filename string) (Config, error) {

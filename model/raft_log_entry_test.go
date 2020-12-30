@@ -44,17 +44,17 @@ func (suite *RaftLogEntryTestSuite) TestRaftLogEntrySanity() {
 }
 
 func (suite *RaftLogEntryTestSuite) TestRaftLogEntryWrite() {
-	position := uint(42)
+	term := uint(42)
 	// Create a person
-	log := RaftLogEntry{Position: position, Value: uint(position)}
+	log := RaftLogEntry{Term: term, Value: uint(term)}
 
 	// Persist it to database
 	suite.db.Create(&log)
-	assert.Equal(suite.T(), uint(position), log.Position)
+	assert.Equal(suite.T(), uint(term), log.Term)
 
 	// Select all
 	var logs []RaftLogEntry
-	suite.db.Where("position = ?", position).Find(&logs)
+	suite.db.Where("term = ?", term).Find(&logs)
 	assert.Equal(suite.T(), 1, len(logs))
 	assert.Equal(suite.T(), log, logs[0])
 }
