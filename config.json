@@ -1,6 +1,6 @@
 {
   "heartBeat": 200,
-  "election": 1000,
+  "election": 4000,
   "minElectionMultiplier": 1,
   "maxElectionMultiplier": 5,
   "members": [
