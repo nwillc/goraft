@@ -36,7 +36,3 @@ func ReadConfig(filename string) (Config, error) {
 func (c *Config) ElectionCountdown() time.Duration {
 	return (time.Duration(c.ElectionTimeout) * time.Millisecond) * time.Duration(rand.Intn(c.MaxOffset-c.MinOffset)+c.MinOffset)
 }
-
-func (c *Config) HeartbeatCountdown() time.Duration {
-	return time.Duration(c.HeartbeatTimeout) * time.Millisecond
-}

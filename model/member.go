@@ -35,7 +35,7 @@ func (m *Member) AppendEntry(s *Server) (bool, error) {
 	ctx := context.Background()
 	response, err := api.AppendEntry(ctx, &raftapi.AppendEntryRequest{
 		Term:        s.term,
-		Leader:      "",
+		Leader:      s.member.Name,
 		LogSize:     0,
 		LastLogTerm: 0,
 	})

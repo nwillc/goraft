@@ -29,7 +29,7 @@ func (suite *ConfigTestSuite) TestReadConfig() {
 	assert.NoError(suite.T(), err)
 	assert.Less(suite.T(), 1, config.HeartbeatTimeout)
 	assert.Less(suite.T(), 1, config.ElectionTimeout)
-	assert.Less(suite.T(), 1, config.MinOffset)
+	assert.Less(suite.T(), 0, config.MinOffset)
 	assert.Less(suite.T(), config.MinOffset, config.MaxOffset)
 	for _, member := range config.Members {
 		assert.NotEmpty(suite.T(), member.Name)

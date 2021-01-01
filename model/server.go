@@ -87,7 +87,7 @@ func (s *Server) RequestVote(_ context.Context, request *raftapi.RequestVoteMess
 }
 
 func (s *Server) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequest) (*raftapi.Bool, error) {
-	s.log.Debugln("Received AppendEntry")
+	s.log.Debugln("Received AppendEntry from", request.Leader)
 	s.lastHeartbeat = time.Now()
 	s.term = request.Term
 	return &raftapi.Bool{Status: true}, nil
@@ -109,8 +109,26 @@ func (s *Server) Run() error {
 	srv := grpc.NewServer()
 	raftapi.RegisterRaftServiceServer(srv, s)
 	go s.monitorHeartbeat()
+	go s.produceHeartbeat()
 	s.log.Infoln("Starting:", s)
 	return srv.Serve(listen)
+}
+
+func (s *Server) produceHeartbeat() {
+	timeout := time.Duration(s.config.HeartbeatTimeout) * time.Millisecond
+	s.log.Debugln("heartbeat timeout", timeout)
+	for {
+		time.Sleep(timeout)
+		if s.role == Leader {
+			for _, member := range s.config.Members {
+				if member.Name == s.member.Name {
+					s.lastHeartbeat = time.Now()
+					continue
+				}
+				_,_ = member.AppendEntry(s)
+			}
+		}
+	}
 }
 
 func (s *Server) monitorHeartbeat() {

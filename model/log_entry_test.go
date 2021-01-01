@@ -10,12 +10,12 @@ import (
 	"testing"
 )
 
-type RaftLogEntryTestSuite struct {
+type LogEntryTestSuite struct {
 	suite.Suite
 	db *gorm.DB
 }
 
-func (suite *RaftLogEntryTestSuite) SetupTest() {
+func (suite *LogEntryTestSuite) SetupTest() {
 	suite.T().Helper()
 	f, err := ioutil.TempFile("", "test*.db")
 	assert.NoError(suite.T(), err)
@@ -29,31 +29,31 @@ func (suite *RaftLogEntryTestSuite) SetupTest() {
 		_ = os.Remove(f.Name())
 	})
 	suite.db = db
-	err = suite.db.AutoMigrate(&RaftLogEntry{})
+	err = suite.db.AutoMigrate(&LogEntry{})
 	assert.NoError(suite.T(), err)
 }
 
-func TestRaftLogEntryTestSuite(t *testing.T) {
-	suite.Run(t, new(RaftLogEntryTestSuite))
+func TestLogEntryTestSuite(t *testing.T) {
+	suite.Run(t, new(LogEntryTestSuite))
 }
 
-func (suite *RaftLogEntryTestSuite) TestRaftLogEntrySanity() {
+func (suite *LogEntryTestSuite) TestLogEntrySanity() {
 	assert.NotNil(suite.T(), suite.db)
-	empty := RaftLogEntry{}
+	empty := LogEntry{}
 	assert.Equal(suite.T(), uint(0), empty.Value)
 }
 
-func (suite *RaftLogEntryTestSuite) TestRaftLogEntryWrite() {
+func (suite *LogEntryTestSuite) TestLogEntryWrite() {
 	term := uint(42)
 	// Create a person
-	log := RaftLogEntry{Term: term, Value: uint(term)}
+	log := LogEntry{Term: term, Value: uint(term)}
 
 	// Persist it to database
 	suite.db.Create(&log)
 	assert.Equal(suite.T(), uint(term), log.Term)
 
 	// Select all
-	var logs []RaftLogEntry
+	var logs []LogEntry
 	suite.db.Where("term = ?", term).Find(&logs)
 	assert.Equal(suite.T(), 1, len(logs))
 	assert.Equal(suite.T(), log, logs[0])

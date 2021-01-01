@@ -1,5 +1,5 @@
 {
-  "heartbeat_timeout": 100,
+  "heartbeat_timeout": 500,
   "election_timeout": 2000,
   "min_offset": 1,
   "max_offset": 5,
