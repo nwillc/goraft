@@ -17,12 +17,13 @@ message Bool { bool status = 1; }
 message WhoAmI {
   string name = 1;
   uint32 port = 2;
+  string role = 3;
 }
 
 /*
   Raft Protocol Messages
  */
-message RequestVoteRequest {
+message RequestVoteMessage {
   uint32 term = 1;
   string candidate = 2;
   uint32 logSize = 3;
@@ -42,6 +43,6 @@ service RaftService {
   rpc Shutdown(Empty) returns (Bool) {}
 
   // Raft Requests
-  rpc RequestVote(RequestVoteRequest) returns (Bool) {}
+  rpc RequestVote(RequestVoteMessage) returns (RequestVoteMessage) {}
   rpc AppendEntry(AppendEntryRequest) returns (Bool) {}
 }

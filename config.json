@@ -1,6 +1,8 @@
 {
-  "heartBeat": 200,
-  "election": 4000,
+  "heartbeat_timeout": 100,
+  "election_timeout": 2000,
+  "min_offset": 1,
+  "max_offset": 5,
   "members": [
     {
       "name": "one",

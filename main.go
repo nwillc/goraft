@@ -6,7 +6,9 @@ import (
 	"github.com/nwillc/goraft/conf"
 	"github.com/nwillc/goraft/model"
 	"log"
+	"math/rand"
 	"os"
+	"time"
 )
 
 func main() {
@@ -16,8 +18,7 @@ func main() {
 		fmt.Printf("version %s\n", "unknown")
 		os.Exit(conf.NormalExit)
 	}
-	log.Println("Start")
-
+	rand.Seed(time.Now().UnixNano())
 	config, err := model.ReadConfig("config.json")
 	if err != nil {
 		log.Fatalln("can not read config")

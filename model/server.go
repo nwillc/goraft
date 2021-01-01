@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/nwillc/goraft/api/raftapi"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"log"
 	"net"
 	"os"
 	"time"
@@ -14,8 +14,9 @@ import (
 type Role string
 
 const (
-	Leader   Role = "LEADER"
-	Follower Role = "FOLLOWER"
+	Candidate Role = "CANDIDATE"
+	Leader    Role = "LEADER"
+	Follower  Role = "FOLLOWER"
 )
 
 type Server struct {
@@ -25,22 +26,29 @@ type Server struct {
 	lastHeartbeat time.Time
 	term          uint32
 	role          Role
-	electionWait  time.Duration
 	votedOn       uint32
+	log           *log.Entry
 }
 
 // Server implements fmt.Stringer
-var _ fmt.Stringer = (*  Server)(nil)
+var _ fmt.Stringer = (*Server)(nil)
 
 func NewServer(member Member, config Config, offset int) *Server {
+	var logger = log.New()
+	logger.Out = os.Stdout
+	logger.Level = log.DebugLevel
+	entry := logger.WithFields(log.Fields{
+		"server": member.Name,
+	})
 	return &Server{
 		member:        member,
 		config:        config,
 		lastHeartbeat: time.Now(),
 		role:          Follower,
-		electionWait:  time.Duration(int(config.Election)+(offset*15)) * time.Millisecond,
 		votedOn:       uint32(0),
+		log:           entry,
 	}
+
 }
 
 /*
@@ -48,15 +56,16 @@ func NewServer(member Member, config Config, offset int) *Server {
 */
 
 func (s *Server) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI, error) {
-	log.Println("Ping")
+	s.log.Println("Ping")
 	return &raftapi.WhoAmI{
 		Name: s.member.Name,
 		Port: s.member.Port,
+		Role: string(s.role),
 	}, nil
 }
 
 func (s *Server) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Bool, error) {
-	log.Println("Shutdown")
+	s.log.Warnln("Shutdown")
 	defer func() {
 		os.Exit(0)
 	}()
@@ -67,12 +76,21 @@ func (s *Server) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Bool, e
   Raft Protocol Functions
 */
 
-func (s *Server) RequestVote(_ context.Context, request *raftapi.RequestVoteRequest) (*raftapi.Bool, error) {
+func (s *Server) RequestVote(_ context.Context, request *raftapi.RequestVoteMessage) (*raftapi.RequestVoteMessage, error) {
+	s.log.Debugln("Received RequestVote")
+	s.lastHeartbeat = time.Now()
 	approve := s.votedOn < request.Term
 	if approve {
 		s.votedOn = request.Term
 	}
-	return &raftapi.Bool{Status: approve}, nil
+	return request, nil
+}
+
+func (s *Server) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequest) (*raftapi.Bool, error) {
+	s.log.Debugln("Received AppendEntry")
+	s.lastHeartbeat = time.Now()
+	s.term = request.Term
+	return &raftapi.Bool{Status: true}, nil
 }
 
 /*
@@ -91,42 +109,50 @@ func (s *Server) Run() error {
 	srv := grpc.NewServer()
 	raftapi.RegisterRaftServiceServer(srv, s)
 	go s.monitorHeartbeat()
-	log.Println("Starting:", s)
+	s.log.Infoln("Starting:", s)
 	return srv.Serve(listen)
 }
 
 func (s *Server) monitorHeartbeat() {
-	for ; ; {
+	timeout := s.config.ElectionCountdown()
+	s.log.Debugln("election timeout", timeout)
+	for {
+		time.Sleep(50 * time.Millisecond)
 		now := time.Now()
-		if now.Sub(s.lastHeartbeat) > (time.Duration(s.config.Election) * time.Millisecond) {
-			log.Println("Election")
-			s.runElection()
-			s.lastHeartbeat = now
+		if now.Sub(s.lastHeartbeat) > timeout {
+			s.log.Debugf("Last Heartbeat: %d, now: %d", s.lastHeartbeat.Unix(), now.Unix())
+			s.log.Debugln("Delta: ", now.Sub(s.lastHeartbeat))
+			s.role = Candidate
+			if s.runElection() {
+				s.lastHeartbeat = time.Now()
+				s.log.Infoln("Role now", Leader)
+				s.role = Leader
+			}
 		}
 	}
 }
 
-func (s *Server) runElection() {
-	if s.role == Leader {
-		return
-	}
+func (s *Server) runElection() bool {
+	s.log.Infoln("kicking off vote")
+	s.term += 1
+	s.votedOn = s.term
 	var votes = 1
 	for _, member := range s.config.Members {
-		if s.member.Name == member.Name {
+		if member.Name == s.member.Name {
 			continue
 		}
-		vote, err := member.RequestVote(s)
-		log.Println("Vote:", vote, "Error:", err)
+		resp, err := member.RequestVote(s)
 		if err != nil {
+			s.log.Errorf("%s: No response from %s\n", s.String(), member.String())
 			continue
 		}
-		if vote {
-			votes += 1
+		if resp.Term > s.term {
+			s.log.Errorf("%s: Response %v indicate election term conflict", s.String(), resp)
+			s.term = resp.Term
+			s.role = Follower
+			return false
 		}
+		votes += 1
 	}
-	if votes > len(s.config.Members)/2 {
-		log.Println("ALL YOUR BASE ARE BELONG TO US!")
-		s.role = Leader
-		s.term += 1
-	}
+	return votes > len(s.config.Members)/2
 }

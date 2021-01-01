@@ -27,7 +27,10 @@ func (suite *ConfigTestSuite) TestFailBadFile() {
 func (suite *ConfigTestSuite) TestReadConfig() {
 	config, err := ReadConfig("../" + conf.ConfigFile)
 	assert.NoError(suite.T(), err)
-	assert.Less(suite.T(), uint(1), config.HeartBeat)
+	assert.Less(suite.T(), 1, config.HeartbeatTimeout)
+	assert.Less(suite.T(), 1, config.ElectionTimeout)
+	assert.Less(suite.T(), 1, config.MinOffset)
+	assert.Less(suite.T(), config.MinOffset, config.MaxOffset)
 	for _, member := range config.Members {
 		assert.NotEmpty(suite.T(), member.Name)
 		assert.Less(suite.T(), uint32(0), member.Port)

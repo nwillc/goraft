@@ -1,11 +1,11 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"github.com/nwillc/goraft/api/raftapi"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"log"
-	"context"
 )
 
 type Member struct {
@@ -14,7 +14,7 @@ type Member struct {
 }
 
 // Member implements fmt.Stringer
-var _ fmt.Stringer = (* Member)(nil)
+var _ fmt.Stringer = (*Member)(nil)
 
 func (m *Member) String() string {
 	return fmt.Sprintf("{ name: %s, port: %d }", m.Name, m.Port)
@@ -24,9 +24,7 @@ func (m *Member) Address() string {
 	return fmt.Sprintf(":%d", m.Port)
 }
 
-func (m *Member) RequestVote(s *Server) (bool, error){
-	log.Println("Requesting vote:", m.String())
-
+func (m *Member) AppendEntry(s *Server) (bool, error) {
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())
 	if err != nil {
@@ -35,9 +33,9 @@ func (m *Member) RequestVote(s *Server) (bool, error){
 	defer conn.Close()
 	api := raftapi.NewRaftServiceClient(conn)
 	ctx := context.Background()
-	response, err := api.RequestVote(ctx, &raftapi.RequestVoteRequest{
-		Term:        s.term + 1,
-		Candidate:   s.member.Name,
+	response, err := api.AppendEntry(ctx, &raftapi.AppendEntryRequest{
+		Term:        s.term,
+		Leader:      "",
 		LogSize:     0,
 		LastLogTerm: 0,
 	})
@@ -46,4 +44,28 @@ func (m *Member) RequestVote(s *Server) (bool, error){
 	}
 
 	return response.Status, nil
+}
+
+func (m *Member) RequestVote(s *Server) (*raftapi.RequestVoteMessage, error) {
+	s.log.WithFields(log.Fields{"member": m.Name}).Debugln("Requesting vote from")
+
+	var conn *grpc.ClientConn
+	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	api := raftapi.NewRaftServiceClient(conn)
+	ctx := context.Background()
+	response, err := api.RequestVote(ctx, &raftapi.RequestVoteMessage{
+		Term:        s.term,
+		Candidate:   s.member.Name,
+		LogSize:     0,
+		LastLogTerm: 0,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
 }
