@@ -23,15 +23,16 @@ const (
 
 type Server struct {
 	raftapi.UnimplementedRaftServiceServer
-	member        Member
-	config        Config
-	lastHeartbeat time.Time
-	role          Role
-	peers         []Member
-	votedOn       uint64
-	log           *log.Entry
-	databasePath  string
-	db            *gorm.DB
+	member Member
+	lastHeartbeat      time.Time
+	role               Role
+	peers              []Member
+	votedOn            uint64
+	log                *log.Entry
+	databasePath       string
+	db                 *gorm.DB
+	electionCountdown  time.Duration
+	heartbeatCountdown time.Duration
 }
 
 // Server implements fmt.Stringer
@@ -55,14 +56,16 @@ func NewServer(member Member, config Config, database string) *Server {
 		peers = append(peers, peer)
 	}
 	return &Server{
-		member:        member,
-		config:        config,
-		lastHeartbeat: time.Now(),
-		role:          Follower,
-		votedOn:       uint64(0),
-		log:           entry,
-		databasePath:  database,
-		peers:         peers,
+		member: member,
+		// config:        config,
+		lastHeartbeat:      time.Now(),
+		role:               Follower,
+		votedOn:            uint64(0),
+		log:                entry,
+		databasePath:       database,
+		peers:              peers,
+		electionCountdown:  config.ElectionCountdown(),
+		heartbeatCountdown: config.HeartbeatCountDown(),
 	}
 }
 
@@ -109,7 +112,7 @@ func (s *Server) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequ
 		return nil, err
 	}
 	if request.Term < term {
-		return  &raftapi.AppendEntryResponse{Term: term}, nil
+		return &raftapi.AppendEntryResponse{Term: term}, nil
 	} else if request.Term >= term {
 		s.role = Follower
 		if err := s.setTerm(request.Term); err != nil {
@@ -144,7 +147,7 @@ func (s *Server) Run() error {
 }
 
 func (s *Server) produceHeartbeat() {
-	timeout := time.Duration(s.config.HeartbeatTimeout) * time.Millisecond
+	timeout := s.heartbeatCountdown
 	s.log.Debugln("heartbeat timeout", timeout)
 	for {
 		time.Sleep(timeout)
@@ -158,7 +161,7 @@ func (s *Server) produceHeartbeat() {
 }
 
 func (s *Server) monitorHeartbeat() {
-	timeout := s.config.ElectionCountdown()
+	timeout := s.electionCountdown
 	s.log.Debugln("election timeout", timeout)
 	for {
 		time.Sleep(50 * time.Millisecond)
@@ -197,7 +200,7 @@ func (s *Server) runElection() bool {
 		}
 		votes += 1
 	}
-	return votes > len(s.config.Members)/2
+	return votes > (len(s.peers)+1)/2
 }
 
 func (s *Server) setupDB() error {
