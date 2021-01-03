@@ -6,6 +6,8 @@ import (
 	"github.com/nwillc/goraft/api/raftapi"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	"net"
 	"os"
 	"time"
@@ -24,31 +26,44 @@ type Server struct {
 	member        Member
 	config        Config
 	lastHeartbeat time.Time
-	term          uint32
 	role          Role
-	votedOn       uint32
+	peers         []Member
+	votedOn       uint64
 	log           *log.Entry
+	databasePath  string
+	db            *gorm.DB
 }
 
 // Server implements fmt.Stringer
 var _ fmt.Stringer = (*Server)(nil)
 
-func NewServer(member Member, config Config, offset int) *Server {
+func NewServer(member Member, config Config, database string) *Server {
 	var logger = log.New()
 	logger.Out = os.Stdout
 	logger.Level = log.DebugLevel
 	entry := logger.WithFields(log.Fields{
 		"server": member.Name,
 	})
+	if database == "" {
+		database = member.Name + ".db"
+	}
+	var peers []Member
+	for _, peer := range config.Members {
+		if peer.Name == member.Name {
+			continue
+		}
+		peers = append(peers, peer)
+	}
 	return &Server{
 		member:        member,
 		config:        config,
 		lastHeartbeat: time.Now(),
 		role:          Follower,
-		votedOn:       uint32(0),
+		votedOn:       uint64(0),
 		log:           entry,
+		databasePath:  database,
+		peers:         peers,
 	}
-
 }
 
 /*
@@ -86,11 +101,22 @@ func (s *Server) RequestVote(_ context.Context, request *raftapi.RequestVoteMess
 	return request, nil
 }
 
-func (s *Server) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequest) (*raftapi.Bool, error) {
+func (s *Server) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequest) (*raftapi.AppendEntryResponse, error) {
 	s.log.Debugln("Received AppendEntry from", request.Leader)
 	s.lastHeartbeat = time.Now()
-	s.term = request.Term
-	return &raftapi.Bool{Status: true}, nil
+	var term uint64
+	if _, err := s.getTerm(); err != nil {
+		return nil, err
+	}
+	if request.Term < term {
+		return  &raftapi.AppendEntryResponse{Term: term}, nil
+	} else if request.Term >= term {
+		s.role = Follower
+		if err := s.setTerm(request.Term); err != nil {
+			return nil, err
+		}
+	}
+	return &raftapi.AppendEntryResponse{Term: term, Success: true}, nil
 }
 
 /*
@@ -102,6 +128,9 @@ func (s *Server) String() string {
 }
 
 func (s *Server) Run() error {
+	if err := s.setupDB(); err != nil {
+		return err
+	}
 	listen, err := net.Listen("tcp", s.member.Address())
 	if err != nil {
 		return err
@@ -120,12 +149,9 @@ func (s *Server) produceHeartbeat() {
 	for {
 		time.Sleep(timeout)
 		if s.role == Leader {
-			for _, member := range s.config.Members {
-				if member.Name == s.member.Name {
-					s.lastHeartbeat = time.Now()
-					continue
-				}
-				_,_ = member.AppendEntry(s)
+			s.lastHeartbeat = time.Now()
+			for _, member := range s.peers {
+				_, _ = member.AppendEntry(s)
 			}
 		}
 	}
@@ -152,25 +178,66 @@ func (s *Server) monitorHeartbeat() {
 
 func (s *Server) runElection() bool {
 	s.log.Infoln("kicking off vote")
-	s.term += 1
-	s.votedOn = s.term
+	term, _ := s.getTerm()
+	term += 1
+	_ = s.setTerm(term)
+	s.votedOn = term
 	var votes = 1
-	for _, member := range s.config.Members {
-		if member.Name == s.member.Name {
-			continue
-		}
+	for _, member := range s.peers {
 		resp, err := member.RequestVote(s)
 		if err != nil {
 			s.log.Errorf("%s: No response from %s\n", s.String(), member.String())
 			continue
 		}
-		if resp.Term > s.term {
+		if resp.Term > term {
 			s.log.Errorf("%s: Response %v indicate election term conflict", s.String(), resp)
-			s.term = resp.Term
+			_ = s.setTerm(resp.Term)
 			s.role = Follower
 			return false
 		}
 		votes += 1
 	}
 	return votes > len(s.config.Members)/2
+}
+
+func (s *Server) setupDB() error {
+	db, err := gorm.Open(sqlite.Open(s.databasePath), &gorm.Config{})
+	if err != nil {
+		return err
+	}
+	s.db = db
+	if err := db.AutoMigrate(&Status{}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) getTerm() (uint64, error) {
+	var statuses []Status
+	tx := s.db.Where("name = ?", s.member.Name).Find(&statuses)
+	if tx.Error != nil {
+		return 0, tx.Error
+	}
+	if len(statuses) == 0 {
+		return 0, nil
+	}
+	return statuses[0].Term, nil
+}
+
+func (s *Server) setTerm(term uint64) error {
+	status := Status{
+		Name: s.member.Name,
+		Term: term,
+	}
+	tx := s.db.Model(&status).Update("term", status.Term)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		tx2 := s.db.Create(&status)
+		if tx2.Error != nil {
+			return tx2.Error
+		}
+	}
+	return nil
 }

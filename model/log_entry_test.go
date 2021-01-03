@@ -40,17 +40,17 @@ func TestLogEntryTestSuite(t *testing.T) {
 func (suite *LogEntryTestSuite) TestLogEntrySanity() {
 	assert.NotNil(suite.T(), suite.db)
 	empty := LogEntry{}
-	assert.Equal(suite.T(), uint(0), empty.Value)
+	assert.Equal(suite.T(), 0, empty.Value)
 }
 
 func (suite *LogEntryTestSuite) TestLogEntryWrite() {
-	term := uint(42)
+	term := uint64(42)
 	// Create a person
-	log := LogEntry{Term: term, Value: uint(term)}
+	log := LogEntry{Term: term, Value: int(term)}
 
 	// Persist it to database
 	suite.db.Create(&log)
-	assert.Equal(suite.T(), uint(term), log.Term)
+	assert.Equal(suite.T(), term, log.Term)
 
 	// Select all
 	var logs []LogEntry

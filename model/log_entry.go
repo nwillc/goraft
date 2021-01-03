@@ -1,6 +1,6 @@
 package model
 
 type LogEntry struct {
-	Term  uint `json:"term" gorm:"primaryKey"`
-	Value uint `json:"value"`
+	Term  uint64 `json:"term" gorm:"primaryKey"`
+	Value int    `json:"value"`
 }

@@ -10,6 +10,7 @@ message Empty{}
 
 message Bool { bool status = 1; }
 
+
 /*
   Management Messages
  */
@@ -24,18 +25,24 @@ message WhoAmI {
   Raft Protocol Messages
  */
 message RequestVoteMessage {
-  uint32 term = 1;
+  uint64 term = 1;
   string candidate = 2;
   uint32 logSize = 3;
   uint32 lastLogTerm = 4;
 }
 
 message AppendEntryRequest {
-  uint32 term = 1;
+  uint64 term = 1;
   string leader = 2;
   uint32 logSize = 3;
   uint32 lastLogTerm = 4;
 }
+
+message AppendEntryResponse {
+  uint64 term = 1;
+  bool success = 2;
+}
+
 
 service RaftService {
   // Management Requests
@@ -44,5 +51,5 @@ service RaftService {
 
   // Raft Requests
   rpc RequestVote(RequestVoteMessage) returns (RequestVoteMessage) {}
-  rpc AppendEntry(AppendEntryRequest) returns (Bool) {}
+  rpc AppendEntry(AppendEntryRequest) returns (AppendEntryResponse) {}
 }

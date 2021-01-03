@@ -26,18 +26,16 @@ func main() {
 
 	var member model.Member
 	var ok = false
-	var salt = 0
-	for i, m := range config.Members {
+	for _, m := range config.Members {
 		if m.Name == *conf.MemberCli.Member {
 			ok = true
 			member = m
-			salt = i
 			break
 		}
 	}
 	if !ok {
 		log.Fatalln("No config for member:", *conf.MemberCli.Member)
 	}
-	srv := model.NewServer(member, config, salt)
+	srv := model.NewServer(member, config, "")
 	log.Fatalln(srv.Run())
 }

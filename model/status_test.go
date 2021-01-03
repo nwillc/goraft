@@ -33,7 +33,7 @@ func (suite *StatusTestSuite) SetupTest() {
 	assert.NoError(suite.T(), err)
 }
 
-func TestStatusTestSuite(t *testing.T)  {
+func TestStatusTestSuite(t *testing.T) {
 	suite.Run(t, new(StatusTestSuite))
 }
 
@@ -41,4 +41,24 @@ func (suite *StatusTestSuite) TestStatusSanity() {
 	assert.NotNil(suite.T(), suite.db)
 	status := Status{}
 	assert.Equal(suite.T(), uint64(0), status.Term)
+}
+
+func (suite *StatusTestSuite) TestStatusWrite() {
+	term := uint64(42)
+	name := "one"
+	// Create a person
+	stutus := Status{
+		Name: name,
+		Term: term,
+	}
+
+	// Persist it to database
+	suite.db.Create(&stutus)
+	assert.Equal(suite.T(), term, stutus.Term)
+
+	// Select all
+	var statuses []Status
+	suite.db.Where("name = ?", name).Find(&statuses)
+	assert.Equal(suite.T(), 1, len(statuses))
+	assert.Equal(suite.T(), stutus, statuses[0])
 }

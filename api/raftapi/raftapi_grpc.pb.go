@@ -22,7 +22,7 @@ type RaftServiceClient interface {
 	Shutdown(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Bool, error)
 	// Raft Requests
 	RequestVote(ctx context.Context, in *RequestVoteMessage, opts ...grpc.CallOption) (*RequestVoteMessage, error)
-	AppendEntry(ctx context.Context, in *AppendEntryRequest, opts ...grpc.CallOption) (*Bool, error)
+	AppendEntry(ctx context.Context, in *AppendEntryRequest, opts ...grpc.CallOption) (*AppendEntryResponse, error)
 }
 
 type raftServiceClient struct {
@@ -60,8 +60,8 @@ func (c *raftServiceClient) RequestVote(ctx context.Context, in *RequestVoteMess
 	return out, nil
 }
 
-func (c *raftServiceClient) AppendEntry(ctx context.Context, in *AppendEntryRequest, opts ...grpc.CallOption) (*Bool, error) {
-	out := new(Bool)
+func (c *raftServiceClient) AppendEntry(ctx context.Context, in *AppendEntryRequest, opts ...grpc.CallOption) (*AppendEntryResponse, error) {
+	out := new(AppendEntryResponse)
 	err := c.cc.Invoke(ctx, "/raftapi.RaftService/AppendEntry", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ type RaftServiceServer interface {
 	Shutdown(context.Context, *Empty) (*Bool, error)
 	// Raft Requests
 	RequestVote(context.Context, *RequestVoteMessage) (*RequestVoteMessage, error)
-	AppendEntry(context.Context, *AppendEntryRequest) (*Bool, error)
+	AppendEntry(context.Context, *AppendEntryRequest) (*AppendEntryResponse, error)
 	mustEmbedUnimplementedRaftServiceServer()
 }
 
@@ -95,7 +95,7 @@ func (UnimplementedRaftServiceServer) Shutdown(context.Context, *Empty) (*Bool, 
 func (UnimplementedRaftServiceServer) RequestVote(context.Context, *RequestVoteMessage) (*RequestVoteMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestVote not implemented")
 }
-func (UnimplementedRaftServiceServer) AppendEntry(context.Context, *AppendEntryRequest) (*Bool, error) {
+func (UnimplementedRaftServiceServer) AppendEntry(context.Context, *AppendEntryRequest) (*AppendEntryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendEntry not implemented")
 }
 func (UnimplementedRaftServiceServer) mustEmbedUnimplementedRaftServiceServer() {}
