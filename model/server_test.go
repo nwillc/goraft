@@ -33,7 +33,8 @@ func TestServerTestSuite(t *testing.T) {
 }
 
 func (suite *ServerTestSuite) TestServerSanity() {
-	assert.Equal(suite.T(), suite.server.member.Name, suite.server.config.Members[0].Name)
+	assert.NotEmpty(suite.T(), suite.server.member.Name)
+	assert.Less(suite.T(), 0, len(suite.server.peers))
 	assert.Nil(suite.T(), suite.server.db)
 	assert.NoError(suite.T(), suite.server.setupDB())
 	assert.NotNil(suite.T(), suite.server.db)

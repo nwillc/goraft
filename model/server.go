@@ -23,7 +23,7 @@ const (
 
 type Server struct {
 	raftapi.UnimplementedRaftServiceServer
-	member Member
+	member             Member
 	lastHeartbeat      time.Time
 	role               Role
 	peers              []Member
@@ -105,6 +105,7 @@ func (s *Server) RequestVote(_ context.Context, request *raftapi.RequestVoteMess
 }
 
 func (s *Server) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequest) (*raftapi.AppendEntryResponse, error) {
+	// TODO handle requests not from leader...?
 	s.log.Debugln("Received AppendEntry from", request.Leader)
 	s.lastHeartbeat = time.Now()
 	var term uint64
