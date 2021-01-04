@@ -1,9 +1,10 @@
-package model
+package server
 
 import (
 	"context"
 	"fmt"
 	"github.com/nwillc/goraft/api/raftapi"
+	"github.com/nwillc/goraft/model"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"gorm.io/driver/sqlite"
@@ -21,12 +22,12 @@ const (
 	Follower  Role = "FOLLOWER"
 )
 
-type Server struct {
+type RaftServer struct {
 	raftapi.UnimplementedRaftServiceServer
-	member             Member
+	member             model.Member
 	lastHeartbeat      time.Time
 	role               Role
-	peers              []Member
+	peers              []model.Member
 	votedOn            uint64
 	log                *log.Entry
 	databasePath       string
@@ -35,10 +36,10 @@ type Server struct {
 	heartbeatCountdown time.Duration
 }
 
-// Server implements fmt.Stringer
-var _ fmt.Stringer = (*Server)(nil)
+// RaftServer implements fmt.Stringer
+var _ fmt.Stringer = (*RaftServer)(nil)
 
-func NewServer(member Member, config Config, database string) *Server {
+func NewRaftServer(member model.Member, config model.Config, database string) *RaftServer {
 	var logger = log.New()
 	logger.Out = os.Stdout
 	logger.Level = log.DebugLevel
@@ -48,14 +49,14 @@ func NewServer(member Member, config Config, database string) *Server {
 	if database == "" {
 		database = member.Name + ".db"
 	}
-	var peers []Member
+	var peers []model.Member
 	for _, peer := range config.Members {
 		if peer.Name == member.Name {
 			continue
 		}
 		peers = append(peers, peer)
 	}
-	return &Server{
+	return &RaftServer{
 		member: member,
 		// config:        config,
 		lastHeartbeat:      time.Now(),
@@ -73,7 +74,7 @@ func NewServer(member Member, config Config, database string) *Server {
   Management Functions
 */
 
-func (s *Server) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI, error) {
+func (s *RaftServer) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI, error) {
 	s.log.Println("Ping")
 	return &raftapi.WhoAmI{
 		Name: s.member.Name,
@@ -82,7 +83,7 @@ func (s *Server) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI, err
 	}, nil
 }
 
-func (s *Server) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Bool, error) {
+func (s *RaftServer) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Bool, error) {
 	s.log.Warnln("Shutdown")
 	defer func() {
 		os.Exit(0)
@@ -94,7 +95,7 @@ func (s *Server) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Bool, e
   Raft Protocol Functions
 */
 
-func (s *Server) RequestVote(_ context.Context, request *raftapi.RequestVoteMessage) (*raftapi.RequestVoteMessage, error) {
+func (s *RaftServer) RequestVote(_ context.Context, request *raftapi.RequestVoteMessage) (*raftapi.RequestVoteMessage, error) {
 	s.log.Debugln("Received RequestVote")
 	s.lastHeartbeat = time.Now()
 	approve := s.votedOn < request.Term
@@ -104,7 +105,7 @@ func (s *Server) RequestVote(_ context.Context, request *raftapi.RequestVoteMess
 	return request, nil
 }
 
-func (s *Server) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequest) (*raftapi.AppendEntryResponse, error) {
+func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequest) (*raftapi.AppendEntryResponse, error) {
 	// TODO handle requests not from leader...?
 	s.log.Debugln("Received AppendEntry from", request.Leader)
 	s.lastHeartbeat = time.Now()
@@ -127,11 +128,11 @@ func (s *Server) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequ
   Other functions
 */
 
-func (s *Server) String() string {
+func (s *RaftServer) String() string {
 	return fmt.Sprintf("{ name: %s, port: %d, role: %s }", s.member.Name, s.member.Port, s.role)
 }
 
-func (s *Server) Run() error {
+func (s *RaftServer) Run() error {
 	if err := s.setupDB(); err != nil {
 		return err
 	}
@@ -147,21 +148,23 @@ func (s *Server) Run() error {
 	return srv.Serve(listen)
 }
 
-func (s *Server) produceHeartbeat() {
+func (s *RaftServer) produceHeartbeat() {
 	timeout := s.heartbeatCountdown
 	s.log.Debugln("heartbeat timeout", timeout)
 	for {
 		time.Sleep(timeout)
 		if s.role == Leader {
+			// TODO handle error
+			term, _ := s.getTerm()
 			s.lastHeartbeat = time.Now()
 			for _, member := range s.peers {
-				_, _ = member.AppendEntry(s)
+				_, _ = member.AppendEntry(s.member.Name, term)
 			}
 		}
 	}
 }
 
-func (s *Server) monitorHeartbeat() {
+func (s *RaftServer) monitorHeartbeat() {
 	timeout := s.electionCountdown
 	s.log.Debugln("election timeout", timeout)
 	for {
@@ -180,7 +183,7 @@ func (s *Server) monitorHeartbeat() {
 	}
 }
 
-func (s *Server) runElection() bool {
+func (s *RaftServer) runElection() bool {
 	s.log.Infoln("kicking off vote")
 	term, _ := s.getTerm()
 	term += 1
@@ -188,7 +191,7 @@ func (s *Server) runElection() bool {
 	s.votedOn = term
 	var votes = 1
 	for _, member := range s.peers {
-		resp, err := member.RequestVote(s)
+		resp, err := member.RequestVote(s.log, s.member.Name, term)
 		if err != nil {
 			s.log.Errorf("%s: No response from %s\n", s.String(), member.String())
 			continue
@@ -204,20 +207,20 @@ func (s *Server) runElection() bool {
 	return votes > (len(s.peers)+1)/2
 }
 
-func (s *Server) setupDB() error {
+func (s *RaftServer) setupDB() error {
 	db, err := gorm.Open(sqlite.Open(s.databasePath), &gorm.Config{})
 	if err != nil {
 		return err
 	}
 	s.db = db
-	if err := db.AutoMigrate(&Status{}); err != nil {
+	if err := db.AutoMigrate(&model.Status{}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *Server) getTerm() (uint64, error) {
-	var statuses []Status
+func (s *RaftServer) getTerm() (uint64, error) {
+	var statuses []model.Status
 	tx := s.db.Where("name = ?", s.member.Name).Find(&statuses)
 	if tx.Error != nil {
 		return 0, tx.Error
@@ -228,8 +231,8 @@ func (s *Server) getTerm() (uint64, error) {
 	return statuses[0].Term, nil
 }
 
-func (s *Server) setTerm(term uint64) error {
-	status := Status{
+func (s *RaftServer) setTerm(term uint64) error {
+	status := model.Status{
 		Name: s.member.Name,
 		Term: term,
 	}

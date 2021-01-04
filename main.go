@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/nwillc/goraft/conf"
 	"github.com/nwillc/goraft/model"
+	"github.com/nwillc/goraft/server"
 	"log"
 	"math/rand"
 	"os"
@@ -36,6 +37,6 @@ func main() {
 	if !ok {
 		log.Fatalln("No config for member:", *conf.MemberCli.Member)
 	}
-	srv := model.NewServer(member, config, "")
+	srv := server.NewRaftServer(member, config, "")
 	log.Fatalln(srv.Run())
 }

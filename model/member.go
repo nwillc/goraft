@@ -24,7 +24,7 @@ func (m *Member) Address() string {
 	return fmt.Sprintf(":%d", m.Port)
 }
 
-func (m *Member) AppendEntry(s *Server) (uint64, error) {
+func (m *Member) AppendEntry(leader string, term uint64) (uint64, error) {
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())
 	if err != nil {
@@ -33,13 +33,9 @@ func (m *Member) AppendEntry(s *Server) (uint64, error) {
 	defer conn.Close()
 	api := raftapi.NewRaftServiceClient(conn)
 	ctx := context.Background()
-	term, err := s.getTerm()
-	if err != nil {
-		return 0, err
-	}
 	response, err := api.AppendEntry(ctx, &raftapi.AppendEntryRequest{
 		Term:        term,
-		Leader:      s.member.Name,
+		Leader:      leader,
 		LogSize:     0,
 		LastLogTerm: 0,
 	})
@@ -50,8 +46,8 @@ func (m *Member) AppendEntry(s *Server) (uint64, error) {
 	return response.Term, nil
 }
 
-func (m *Member) RequestVote(s *Server) (*raftapi.RequestVoteMessage, error) {
-	s.log.WithFields(log.Fields{"member": m.Name}).Debugln("Requesting vote from")
+func (m *Member) RequestVote(logger *log.Entry, leader string, term uint64) (*raftapi.RequestVoteMessage, error) {
+	logger.WithFields(log.Fields{"member": m.Name}).Debugln("Requesting vote from")
 
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())
@@ -61,13 +57,9 @@ func (m *Member) RequestVote(s *Server) (*raftapi.RequestVoteMessage, error) {
 	defer conn.Close()
 	api := raftapi.NewRaftServiceClient(conn)
 	ctx := context.Background()
-	term, err := s.getTerm()
-	if err != nil {
-		return nil, err
-	}
 	response, err := api.RequestVote(ctx, &raftapi.RequestVoteMessage{
 		Term:        term,
-		Candidate:   s.member.Name,
+		Candidate:   leader,
 		LogSize:     0,
 		LastLogTerm: 0,
 	})
