@@ -50,7 +50,7 @@ func (suite *LogEntryRepositoryTestSuite) TestWriteRead() {
 func (suite *LogEntryRepositoryTestSuite) TestCount() {
 	count, err := suite.repo.RowCount()
 	assert.NoError(suite.T(), err)
-	records := count + 	20
+	records := count + 20
 	for i := count + 1; i <= records; i++ {
 		entry := model.LogEntry{Term: uint64(i), Value: i}
 		err = suite.repo.Write(&entry)
@@ -58,5 +58,5 @@ func (suite *LogEntryRepositoryTestSuite) TestCount() {
 	}
 	count2, err := suite.repo.RowCount()
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), count + records, count2)
+	assert.Equal(suite.T(), count+records, count2)
 }

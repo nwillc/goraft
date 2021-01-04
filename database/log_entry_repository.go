@@ -10,7 +10,7 @@ type LogEntryRepository struct {
 }
 
 // LogEntryRepository implements Repository
-var _ GormRepository = (* LogEntryRepository)(nil)
+var _ GormRepository = (*LogEntryRepository)(nil)
 
 func NewLogEntryRepository(db *gorm.DB) (*LogEntryRepository, error) {
 	repo := LogEntryRepository{
