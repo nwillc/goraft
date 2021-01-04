@@ -5,30 +5,30 @@ import (
 	"gorm.io/gorm"
 )
 
-type ServerRepository struct {
+type StatusRepository struct {
 	db *gorm.DB
 }
 
-var _ GormRepository = (*ServerRepository)(nil)
+var _ GormRepository = (*StatusRepository)(nil)
 
-func NewServerRepository(db *gorm.DB) (*ServerRepository, error) {
-	repo := ServerRepository{
+func NewServerRepository(db *gorm.DB) (*StatusRepository, error) {
+	repo := StatusRepository{
 		db: db,
 	}
 	return &repo, nil
 }
 
-func (s ServerRepository) GetDB() *gorm.DB {
+func (s *StatusRepository) GetDB() *gorm.DB {
 	return s.db
 }
 
-func (s ServerRepository) RowCount() (int, error) {
+func (s *StatusRepository) RowCount() (int, error) {
 	var count int64
 	s.db.Model(&model.Status{}).Count(&count)
 	return int(count), nil
 }
 
-func (s ServerRepository) Migrate() error {
+func (s *StatusRepository) Migrate() error {
 	if err := s.db.AutoMigrate(&model.Status{}); err != nil {
 		return err
 	}
