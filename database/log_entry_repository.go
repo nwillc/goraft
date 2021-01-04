@@ -16,9 +16,6 @@ func NewLogEntryRepository(db *gorm.DB) (*LogEntryRepository, error) {
 	repo := LogEntryRepository{
 		db: db,
 	}
-	if err := db.AutoMigrate(&model.LogEntry{}); err != nil {
-		return nil, err
-	}
 	return &repo, nil
 }
 
