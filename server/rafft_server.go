@@ -35,6 +35,7 @@ type RaftServer struct {
 	electionCountdown  time.Duration
 	heartbeatCountdown time.Duration
 	statusRepo         *database.StatusRepository
+	logRepo            *database.LogEntryRepository
 }
 
 // RaftServer implements fmt.Stringer
@@ -213,12 +214,23 @@ func (s *RaftServer) setupRepositories() error {
 	if err != nil {
 		return err
 	}
-	repo, err := database.NewStatusRepository(db)
+	sRepo, err := database.NewStatusRepository(db)
 	if err != nil {
 		return err
 	}
-	s.statusRepo = repo
-	return repo.Migrate()
+	if err = sRepo.Migrate(); err != nil {
+		return err
+	}
+	lRepo, err := database.NewLogEntryRepository(db)
+	if err != nil {
+		return err
+	}
+	if err = lRepo.Migrate(); err != nil {
+		return err
+	}
+	s.statusRepo = sRepo
+	s.logRepo = lRepo
+	return nil
 }
 
 func (s *RaftServer) getTerm() (uint64, error) {
