@@ -42,3 +42,12 @@ func (s *StatusRepository) Write(status *model.Status) error {
 	}
 	return nil
 }
+
+func (s *StatusRepository) Read(name string) (*model.Status, error) {
+	var statuses []model.Status
+	tx := s.db.Where("name = ?", name).Find(&statuses)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	return &statuses[0], nil
+}
