@@ -11,7 +11,7 @@ type StatusRepository struct {
 
 var _ GormRepository = (*StatusRepository)(nil)
 
-func NewServerRepository(db *gorm.DB) (*StatusRepository, error) {
+func NewStatusRepository(db *gorm.DB) (*StatusRepository, error) {
 	repo := StatusRepository{
 		db: db,
 	}
@@ -31,6 +31,14 @@ func (s *StatusRepository) RowCount() (int, error) {
 func (s *StatusRepository) Migrate() error {
 	if err := s.db.AutoMigrate(&model.Status{}); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (s *StatusRepository) Write(status *model.Status) error {
+	tx := s.db.Create(status)
+	if tx.Error != nil {
+		return tx.Error
 	}
 	return nil
 }

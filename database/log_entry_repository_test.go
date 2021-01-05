@@ -4,8 +4,6 @@ import (
 	"github.com/nwillc/goraft/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"io/ioutil"
-	"os"
 	"testing"
 )
 
@@ -16,19 +14,10 @@ type LogEntryRepositoryTestSuite struct {
 
 func (suite *LogEntryRepositoryTestSuite) SetupTest() {
 	suite.T().Helper()
-	f, err := ioutil.TempFile("", "test*.db")
+	db := tempDB(suite.T())
+	repo, err := NewLogEntryRepository(db)
 	assert.NoError(suite.T(), err)
-	db, err := OpenSqlite(f.Name())
-	if err != nil {
-		panic("failed to open database")
-	}
-	suite.T().Cleanup(func() {
-		sqlDb, _ := db.DB()
-		_ = sqlDb.Close()
-		_ = os.Remove(f.Name())
-	})
-	suite.repo, err = NewLogEntryRepository(db)
-	assert.NoError(suite.T(), err)
+	suite.repo = repo
 	err = suite.repo.Migrate()
 	assert.NoError(suite.T(), err)
 }
