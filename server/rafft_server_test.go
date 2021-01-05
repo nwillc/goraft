@@ -36,14 +36,14 @@ func TestRaftServerTestSuite(t *testing.T) {
 func (suite *RaftServerTestSuite) TestRaftServerSanity() {
 	assert.NotEmpty(suite.T(), suite.server.member.Name)
 	assert.Less(suite.T(), 0, len(suite.server.peers))
-	assert.Nil(suite.T(), suite.server.db)
-	assert.NoError(suite.T(), suite.server.setupDB())
-	assert.NotNil(suite.T(), suite.server.db)
+	assert.Nil(suite.T(), suite.server.statusRepo)
+	assert.NoError(suite.T(), suite.server.setupRepositories())
+	assert.NotNil(suite.T(), suite.server.statusRepo)
 }
 
 func (suite *RaftServerTestSuite) TestPersistTerm() {
 	term := uint64(23)
-	assert.NoError(suite.T(), suite.server.setupDB())
+	assert.NoError(suite.T(), suite.server.setupRepositories())
 	assert.NoError(suite.T(), suite.server.setTerm(term))
 	t, err := suite.server.getTerm()
 	assert.NoError(suite.T(), err)

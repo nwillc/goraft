@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func tempDB(t *testing.T) *gorm.DB{
+func tempDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	f, err := ioutil.TempFile("", "test*.db")
 	assert.NoError(t, err)

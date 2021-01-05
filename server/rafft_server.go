@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/nwillc/goraft/api/raftapi"
+	"github.com/nwillc/goraft/database"
 	"github.com/nwillc/goraft/model"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -31,9 +32,9 @@ type RaftServer struct {
 	votedOn            uint64
 	log                *log.Entry
 	databasePath       string
-	db                 *gorm.DB
 	electionCountdown  time.Duration
 	heartbeatCountdown time.Duration
+	statusRepo         *database.StatusRepository
 }
 
 // RaftServer implements fmt.Stringer
@@ -133,7 +134,7 @@ func (s *RaftServer) String() string {
 }
 
 func (s *RaftServer) Run() error {
-	if err := s.setupDB(); err != nil {
+	if err := s.setupRepositories(); err != nil {
 		return err
 	}
 	listen, err := net.Listen("tcp", s.member.Address())
@@ -207,28 +208,25 @@ func (s *RaftServer) runElection() bool {
 	return votes > (len(s.peers)+1)/2
 }
 
-func (s *RaftServer) setupDB() error {
+func (s *RaftServer) setupRepositories() error {
 	db, err := gorm.Open(sqlite.Open(s.databasePath), &gorm.Config{})
 	if err != nil {
 		return err
 	}
-	s.db = db
-	if err := db.AutoMigrate(&model.Status{}); err != nil {
+	repo, err := database.NewStatusRepository(db)
+	if err != nil {
 		return err
 	}
-	return nil
+	s.statusRepo = repo
+	return repo.Migrate()
 }
 
 func (s *RaftServer) getTerm() (uint64, error) {
-	var statuses []model.Status
-	tx := s.db.Where("name = ?", s.member.Name).Find(&statuses)
-	if tx.Error != nil {
-		return 0, tx.Error
+	status, err := s.statusRepo.Read(s.member.Name)
+	if err != nil {
+		return 0, err
 	}
-	if len(statuses) == 0 {
-		return 0, nil
-	}
-	return statuses[0].Term, nil
+	return status.Term, nil
 }
 
 func (s *RaftServer) setTerm(term uint64) error {
@@ -236,15 +234,5 @@ func (s *RaftServer) setTerm(term uint64) error {
 		Name: s.member.Name,
 		Term: term,
 	}
-	tx := s.db.Model(&status).Update("term", status.Term)
-	if tx.Error != nil {
-		return tx.Error
-	}
-	if tx.RowsAffected == 0 {
-		tx2 := s.db.Create(&status)
-		if tx2.Error != nil {
-			return tx2.Error
-		}
-	}
-	return nil
+	return s.statusRepo.Write(&status)
 }
