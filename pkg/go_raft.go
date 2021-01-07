@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/nwillc/goraft/conf"
-	"github.com/nwillc/goraft/model"
-	"github.com/nwillc/goraft/server"
+	"github.com/nwillc/goraft/pkg/conf"
+	"github.com/nwillc/goraft/pkg/model"
+	"github.com/nwillc/goraft/pkg/server"
 	"log"
 	"math/rand"
 	"os"
