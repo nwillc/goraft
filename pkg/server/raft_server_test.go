@@ -18,7 +18,7 @@ type RaftServerTestSuite struct {
 func (suite *RaftServerTestSuite) SetupTest() {
 	suite.T().Helper()
 
-	conf, err := model.ReadConfig("../" + conf.ConfigFile)
+	conf, err := model.ReadConfig("../../" + conf.ConfigFile)
 	assert.NoError(suite.T(), err)
 	member := conf.Members[0]
 	tempFile, err := ioutil.TempFile("", member.Name+"*.db")

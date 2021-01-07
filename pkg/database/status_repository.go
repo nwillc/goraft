@@ -36,9 +36,15 @@ func (s *StatusRepository) Migrate() error {
 }
 
 func (s *StatusRepository) Write(status *model.Status) error {
-	tx := s.db.Create(status)
+	tx := s.db.Model(&status).Update("term", status.Term)
 	if tx.Error != nil {
 		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		tx := s.db.Create(status)
+		if tx.Error != nil {
+			return tx.Error
+		}
 	}
 	return nil
 }
@@ -46,7 +52,7 @@ func (s *StatusRepository) Write(status *model.Status) error {
 func (s *StatusRepository) Read(name string) (*model.Status, error) {
 	var statuses []model.Status
 	tx := s.db.Where("name = ?", name).Find(&statuses)
-	if tx.Error != nil {
+	if tx.Error != nil || tx.RowsAffected == 0 {
 		return nil, tx.Error
 	}
 	return &statuses[0], nil

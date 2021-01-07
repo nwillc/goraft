@@ -25,7 +25,7 @@ func (suite *ConfigTestSuite) TestFailBadFile() {
 }
 
 func (suite *ConfigTestSuite) TestReadConfig() {
-	config, err := ReadConfig("../" + conf.ConfigFile)
+	config, err := ReadConfig("../../" + conf.ConfigFile)
 	assert.NoError(suite.T(), err)
 	assert.Less(suite.T(), 1, config.HeartbeatTimeout)
 	assert.Less(suite.T(), 1, config.ElectionTimeout)
