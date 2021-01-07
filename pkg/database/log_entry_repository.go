@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// LogEntryRepository is a GormRepository focused on model.LogEntry.
 type LogEntryRepository struct {
 	db *gorm.DB
 }
@@ -12,6 +13,7 @@ type LogEntryRepository struct {
 // LogEntryRepository implements Repository
 var _ GormRepository = (*LogEntryRepository)(nil)
 
+// NewLogEntryRepository instantiates a LogEntryRepository.
 func NewLogEntryRepository(db *gorm.DB) (*LogEntryRepository, error) {
 	repo := LogEntryRepository{
 		db: db,
@@ -19,16 +21,14 @@ func NewLogEntryRepository(db *gorm.DB) (*LogEntryRepository, error) {
 	return &repo, nil
 }
 
-func (l *LogEntryRepository) GetDB() *gorm.DB {
-	return l.db
-}
-
+// RowCount returns the row count LogEntryRepository.
 func (l *LogEntryRepository) RowCount() (int, error) {
 	var count int64
 	l.db.Model(&model.LogEntry{}).Count(&count)
 	return int(count), nil
 }
 
+// Migrate the schema for the LogEntryRepository.
 func (l *LogEntryRepository) Migrate() error {
 	if err := l.db.AutoMigrate(&model.LogEntry{}); err != nil {
 		return err

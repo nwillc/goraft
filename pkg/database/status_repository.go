@@ -5,12 +5,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// StatusRepository is a GormRepository that supports model.Status.
 type StatusRepository struct {
 	db *gorm.DB
 }
 
 var _ GormRepository = (*StatusRepository)(nil)
 
+// NewStatusRepository instantiates a new StatusRepository.
 func NewStatusRepository(db *gorm.DB) (*StatusRepository, error) {
 	repo := StatusRepository{
 		db: db,
@@ -18,16 +20,14 @@ func NewStatusRepository(db *gorm.DB) (*StatusRepository, error) {
 	return &repo, nil
 }
 
-func (s *StatusRepository) GetDB() *gorm.DB {
-	return s.db
-}
-
+// RowCount returns the row count of model.Status entries.
 func (s *StatusRepository) RowCount() (int, error) {
 	var count int64
 	s.db.Model(&model.Status{}).Count(&count)
 	return int(count), nil
 }
 
+// Migrate the scheme for this repoitory.
 func (s *StatusRepository) Migrate() error {
 	if err := s.db.AutoMigrate(&model.Status{}); err != nil {
 		return err

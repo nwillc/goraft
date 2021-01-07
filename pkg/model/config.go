@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// Config is the configuration of a Raft cluster.
 type Config struct {
 	HeartbeatTimeout int      `json:"heartbeat_timeout"`
 	ElectionTimeout  int      `json:"election_timeout"`
@@ -16,6 +17,7 @@ type Config struct {
 	Members          []Member `json:"members"`
 }
 
+// ReadConfig reads a Config stored as JSON in filename.
 func ReadConfig(filename string) (Config, error) {
 	configFile, err := os.Open(filename)
 	if err != nil {
@@ -33,10 +35,12 @@ func ReadConfig(filename string) (Config, error) {
 	return config, nil
 }
 
+// ElectionCountdown calculate the election countdown based on the Config.
 func (c *Config) ElectionCountdown() time.Duration {
 	return (time.Duration(c.ElectionTimeout) * time.Millisecond) * time.Duration(rand.Intn(c.MaxOffset-c.MinOffset)+c.MinOffset)
 }
 
+// HeartbeatCountDown calculates the heartbeat countdown based on the Config.
 func (c *Config) HeartbeatCountDown() time.Duration {
 	return time.Duration(c.HeartbeatTimeout) * time.Millisecond
 }

@@ -15,14 +15,19 @@ import (
 	"time"
 )
 
+// Role currently of a RaftServer
 type Role string
 
 const (
+	// Candidate Role
 	Candidate Role = "CANDIDATE"
-	Leader    Role = "LEADER"
-	Follower  Role = "FOLLOWER"
+	// Leader Role
+	Leader   Role = "LEADER"
+	// Follower Role
+	Follower Role = "FOLLOWER"
 )
 
+// RaftServer holds data needed by a Raft Server
 type RaftServer struct {
 	raftapi.UnimplementedRaftServiceServer
 	member             model.Member
@@ -41,6 +46,7 @@ type RaftServer struct {
 // RaftServer implements fmt.Stringer
 var _ fmt.Stringer = (*RaftServer)(nil)
 
+// NewRaftServer function to instantiate a RaftServer
 func NewRaftServer(member model.Member, config model.Config, database string) *RaftServer {
 	var logger = log.New()
 	logger.Out = os.Stdout
@@ -76,6 +82,7 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
   Management Functions
 */
 
+// Ping the RaftServer
 func (s *RaftServer) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI, error) {
 	s.log.Println("Ping")
 	return &raftapi.WhoAmI{
@@ -85,6 +92,7 @@ func (s *RaftServer) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI,
 	}, nil
 }
 
+// Shutdown the RaftServer
 func (s *RaftServer) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Bool, error) {
 	s.log.Warnln("Shutdown")
 	defer func() {
@@ -97,6 +105,7 @@ func (s *RaftServer) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Boo
   Raft Protocol Functions
 */
 
+// RequestVote Raft request to ask peers to participate in a vote.
 func (s *RaftServer) RequestVote(_ context.Context, request *raftapi.RequestVoteMessage) (*raftapi.RequestVoteMessage, error) {
 	s.log.Debugln("Received RequestVote")
 	s.lastHeartbeat = time.Now()
@@ -107,6 +116,7 @@ func (s *RaftServer) RequestVote(_ context.Context, request *raftapi.RequestVote
 	return request, nil
 }
 
+// AppendEntry Raft request to append a LogEntry to the log.
 func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequest) (*raftapi.AppendEntryResponse, error) {
 	// TODO handle requests not from leader...?
 	s.log.Debugln("Received AppendEntry from", request.Leader)
@@ -134,6 +144,7 @@ func (s *RaftServer) String() string {
 	return fmt.Sprintf("{ name: %s, port: %d, role: %s }", s.member.Name, s.member.Port, s.role)
 }
 
+// Run the RaftServer
 func (s *RaftServer) Run() error {
 	if err := s.setupRepositories(); err != nil {
 		return err
@@ -188,7 +199,7 @@ func (s *RaftServer) monitorHeartbeat() {
 func (s *RaftServer) runElection() bool {
 	s.log.Infoln("kicking off vote")
 	term, _ := s.getTerm()
-	term += 1
+	term++
 	_ = s.setTerm(term)
 	s.votedOn = term
 	var votes = 1
@@ -204,7 +215,7 @@ func (s *RaftServer) runElection() bool {
 			s.role = Follower
 			return false
 		}
-		votes += 1
+		votes++
 	}
 	return votes > (len(s.peers)+1)/2
 }
