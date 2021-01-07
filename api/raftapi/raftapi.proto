@@ -8,7 +8,7 @@ option go_package = ".;raftapi";
  */
 message Empty{}
 
-message Bool { bool status = 1; }
+message Bool {bool status = 1;}
 
 
 /*
@@ -34,8 +34,8 @@ message RequestVoteMessage {
 message AppendEntryRequest {
   uint64 term = 1;
   string leader = 2;
-  uint32 logSize = 3;
-  uint32 lastLogTerm = 4;
+  uint64 prevLogIndex = 3;
+  uint64 prevLogTerm = 4;
 }
 
 message AppendEntryResponse {

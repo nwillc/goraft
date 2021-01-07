@@ -36,8 +36,6 @@ func (m *Member) AppendEntry(leader string, term uint64) (uint64, error) {
 	response, err := api.AppendEntry(ctx, &raftapi.AppendEntryRequest{
 		Term:        term,
 		Leader:      leader,
-		LogSize:     0,
-		LastLogTerm: 0,
 	})
 	if err != nil {
 		return 0, err
