@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/nwillc/goraft/pkg/conf"
+	"github.com/nwillc/goraft/conf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"testing"

@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/nwillc/goraft/pkg/conf"
-	"github.com/nwillc/goraft/pkg/model"
-	"github.com/nwillc/goraft/pkg/server"
-	"log"
+	"github.com/nwillc/goraft/conf"
+	"github.com/nwillc/goraft/model"
+	"github.com/nwillc/goraft/server"
+	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"os"
 	"time"
@@ -38,5 +38,6 @@ func main() {
 		log.Fatalln("No config for member:", *conf.MemberCli.Member)
 	}
 	srv := server.NewRaftServer(member, config, "")
+	log.Infoln("Running server")
 	log.Fatalln(srv.Run())
 }

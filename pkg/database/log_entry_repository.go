@@ -1,7 +1,7 @@
 package database
 
 import (
-	"github.com/nwillc/goraft/pkg/model"
+	"github.com/nwillc/goraft/model"
 	"gorm.io/gorm"
 )
 

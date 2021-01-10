@@ -1,8 +1,8 @@
 package server
 
 import (
-	"github.com/nwillc/goraft/pkg/conf"
-	"github.com/nwillc/goraft/pkg/model"
+	"github.com/nwillc/goraft/conf"
+	"github.com/nwillc/goraft/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"

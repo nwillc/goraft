@@ -3,8 +3,8 @@ package model
 import (
 	"context"
 	"fmt"
-	"github.com/nwillc/goraft/api/raftapi"
-	log "github.com/sirupsen/logrus"
+	"github.com/nwillc/goraft/raftapi"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
@@ -48,9 +48,9 @@ func (m *Member) AppendEntry(leader string, term uint64) (uint64, error) {
 }
 
 // RequestVote request of a Member.
-func (m *Member) RequestVote(logger *log.Entry, leader string, term uint64) (*raftapi.RequestVoteMessage, error) {
-	logger.WithFields(log.Fields{"member": m.Name}).Debugln("Requesting vote from")
-
+func (m *Member) RequestVote(ctx context.Context, leader string, term uint64) (*raftapi.RequestVoteMessage, error) {
+	ctx = context.WithValue(ctx, "member_name", m.Name)
+	logrus.WithContext(ctx).Debugln("Requesting vote from")
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())
 	if err != nil {
@@ -58,7 +58,6 @@ func (m *Member) RequestVote(logger *log.Entry, leader string, term uint64) (*ra
 	}
 	defer conn.Close()
 	api := raftapi.NewRaftServiceClient(conn)
-	ctx := context.Background()
 	response, err := api.RequestVote(ctx, &raftapi.RequestVoteMessage{
 		Term:        term,
 		Candidate:   leader,

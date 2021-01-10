@@ -3,9 +3,9 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/nwillc/goraft/api/raftapi"
-	"github.com/nwillc/goraft/pkg/database"
-	"github.com/nwillc/goraft/pkg/model"
+	"github.com/nwillc/goraft/raftapi"
+	"github.com/nwillc/goraft/database"
+	"github.com/nwillc/goraft/model"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"gorm.io/driver/sqlite"
@@ -22,7 +22,7 @@ const (
 	// Candidate Role
 	Candidate Role = "CANDIDATE"
 	// Leader Role
-	Leader   Role = "LEADER"
+	Leader Role = "LEADER"
 	// Follower Role
 	Follower Role = "FOLLOWER"
 )
@@ -35,12 +35,12 @@ type RaftServer struct {
 	role               Role
 	peers              []model.Member
 	votedOn            uint64
-	log                *log.Entry
 	databasePath       string
 	electionCountdown  time.Duration
 	heartbeatCountdown time.Duration
 	statusRepo         *database.StatusRepository
 	logRepo            *database.LogEntryRepository
+	ctx                context.Context
 }
 
 // RaftServer implements fmt.Stringer
@@ -48,15 +48,6 @@ var _ fmt.Stringer = (*RaftServer)(nil)
 
 // NewRaftServer function to instantiate a RaftServer
 func NewRaftServer(member model.Member, config model.Config, database string) *RaftServer {
-	var logger = log.New()
-	logger.Out = os.Stdout
-	logger.Level = log.DebugLevel
-	entry := logger.WithFields(log.Fields{
-		"server": member.Name,
-	})
-	if database == "" {
-		database = member.Name + ".db"
-	}
 	var peers []model.Member
 	for _, peer := range config.Members {
 		if peer.Name == member.Name {
@@ -64,17 +55,17 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 		}
 		peers = append(peers, peer)
 	}
+	ctx := context.WithValue(context.Background(), "server_name", member.Name)
 	return &RaftServer{
-		member: member,
-		// config:        config,
+		member:             member,
 		lastHeartbeat:      time.Now(),
 		role:               Follower,
 		votedOn:            uint64(0),
-		log:                entry,
 		databasePath:       database,
 		peers:              peers,
 		electionCountdown:  config.ElectionCountdown(),
 		heartbeatCountdown: config.HeartbeatCountDown(),
+		ctx: ctx,
 	}
 }
 
@@ -84,7 +75,7 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 
 // Ping the RaftServer
 func (s *RaftServer) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI, error) {
-	s.log.Println("Ping")
+	log.Println("Ping")
 	return &raftapi.WhoAmI{
 		Name: s.member.Name,
 		Port: s.member.Port,
@@ -94,7 +85,7 @@ func (s *RaftServer) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI,
 
 // Shutdown the RaftServer
 func (s *RaftServer) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Bool, error) {
-	s.log.Warnln("Shutdown")
+	log.Warnln("Shutdown")
 	defer func() {
 		os.Exit(0)
 	}()
@@ -107,7 +98,7 @@ func (s *RaftServer) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Boo
 
 // RequestVote Raft request to ask peers to participate in a vote.
 func (s *RaftServer) RequestVote(_ context.Context, request *raftapi.RequestVoteMessage) (*raftapi.RequestVoteMessage, error) {
-	s.log.Debugln("Received RequestVote")
+	log.Debugln("Received RequestVote")
 	s.lastHeartbeat = time.Now()
 	approve := s.votedOn < request.Term
 	if approve {
@@ -119,7 +110,7 @@ func (s *RaftServer) RequestVote(_ context.Context, request *raftapi.RequestVote
 // AppendEntry Raft request to append a LogEntry to the log.
 func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequest) (*raftapi.AppendEntryResponse, error) {
 	// TODO handle requests not from leader...?
-	s.log.Debugln("Received AppendEntry from", request.Leader)
+	log.Debugln("Received AppendEntry from", request.Leader)
 	s.lastHeartbeat = time.Now()
 	var term uint64
 	if _, err := s.getTerm(); err != nil {
@@ -157,13 +148,12 @@ func (s *RaftServer) Run() error {
 	raftapi.RegisterRaftServiceServer(srv, s)
 	go s.monitorHeartbeat()
 	go s.produceHeartbeat()
-	s.log.Infoln("Starting:", s)
 	return srv.Serve(listen)
 }
 
 func (s *RaftServer) produceHeartbeat() {
 	timeout := s.heartbeatCountdown
-	s.log.Debugln("heartbeat timeout", timeout)
+	log.Debugln("heartbeat timeout", timeout)
 	for {
 		time.Sleep(timeout)
 		if s.role == Leader {
@@ -179,17 +169,17 @@ func (s *RaftServer) produceHeartbeat() {
 
 func (s *RaftServer) monitorHeartbeat() {
 	timeout := s.electionCountdown
-	s.log.Debugln("election timeout", timeout)
+	log.Debugln("election timeout", timeout)
 	for {
 		time.Sleep(50 * time.Millisecond)
 		now := time.Now()
 		if now.Sub(s.lastHeartbeat) > timeout {
-			s.log.Debugf("Last Heartbeat: %d, now: %d", s.lastHeartbeat.Unix(), now.Unix())
-			s.log.Debugln("Delta: ", now.Sub(s.lastHeartbeat))
+			log.Debugf("Last Heartbeat: %d, now: %d", s.lastHeartbeat.Unix(), now.Unix())
+			log.Debugln("Delta: ", now.Sub(s.lastHeartbeat))
 			s.role = Candidate
 			if s.runElection() {
 				s.lastHeartbeat = time.Now()
-				s.log.Infoln("Role now", Leader)
+				log.Infoln("Role now", Leader)
 				s.role = Leader
 			}
 		}
@@ -197,20 +187,20 @@ func (s *RaftServer) monitorHeartbeat() {
 }
 
 func (s *RaftServer) runElection() bool {
-	s.log.Infoln("kicking off vote")
+	log.WithContext(s.ctx).Infoln("kicking off vote")
 	term, _ := s.getTerm()
 	term++
 	_ = s.setTerm(term)
 	s.votedOn = term
 	var votes = 1
 	for _, member := range s.peers {
-		resp, err := member.RequestVote(s.log, s.member.Name, term)
+		resp, err := member.RequestVote(s.ctx, s.member.Name, term)
 		if err != nil {
-			s.log.Errorf("%s: No response from %s\n", s.String(), member.String())
+			log.Errorf("%s: No response from %s\n", s.String(), member.String())
 			continue
 		}
 		if resp.Term > term {
-			s.log.Errorf("%s: Response %v indicate election term conflict", s.String(), resp)
+			log.Errorf("%s: Response %v indicate election term conflict", s.String(), resp)
 			_ = s.setTerm(resp.Term)
 			s.role = Follower
 			return false
@@ -248,6 +238,9 @@ func (s *RaftServer) getTerm() (uint64, error) {
 	status, err := s.statusRepo.Read(s.member.Name)
 	if err != nil {
 		return 0, err
+	}
+	if status == nil {
+		return 0, nil
 	}
 	return status.Term, nil
 }
