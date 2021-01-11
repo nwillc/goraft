@@ -55,6 +55,9 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 		}
 		peers = append(peers, peer)
 	}
+	if database == "" {
+		database = member.Name + ".db"
+	}
 	fields := log.Fields{
 		"server_name": member.Name,
 		"server_port": member.Port,
