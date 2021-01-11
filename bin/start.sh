@@ -8,5 +8,5 @@ cd "${SCRIPT_DIR}/../pkg"
 go build
 
 for member in one two three four five; do
-  ./goraft -member ${member} &
+  ./goraft -member ${member} -log-level debug &
 done

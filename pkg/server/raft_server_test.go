@@ -18,15 +18,15 @@ type RaftServerTestSuite struct {
 func (suite *RaftServerTestSuite) SetupTest() {
 	suite.T().Helper()
 
-	conf, err := model.ReadConfig("../../" + conf.ConfigFile)
+	config, err := model.ReadConfig("../../" + conf.ConfigFile)
 	assert.NoError(suite.T(), err)
-	member := conf.Members[0]
+	member := config.Members[0]
 	tempFile, err := ioutil.TempFile("", member.Name+"*.db")
 	assert.NoError(suite.T(), err)
 	suite.T().Cleanup(func() {
 		_ = os.Remove(tempFile.Name())
 	})
-	suite.server = NewRaftServer(member, conf, tempFile.Name())
+	suite.server = NewRaftServer(member, config, tempFile.Name())
 }
 
 func TestRaftServerTestSuite(t *testing.T) {

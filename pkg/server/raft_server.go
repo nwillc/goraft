@@ -3,9 +3,9 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/nwillc/goraft/raftapi"
 	"github.com/nwillc/goraft/database"
 	"github.com/nwillc/goraft/model"
+	"github.com/nwillc/goraft/raftapi"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"gorm.io/driver/sqlite"
@@ -55,7 +55,11 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 		}
 		peers = append(peers, peer)
 	}
-	ctx := context.WithValue(context.Background(), "server_name", member.Name)
+	fields := log.Fields{
+		"server_name": member.Name,
+		"server_port": member.Port,
+	}
+	ctx := context.WithValue(context.Background(), "fields", fields)
 	return &RaftServer{
 		member:             member,
 		lastHeartbeat:      time.Now(),
@@ -65,7 +69,7 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 		peers:              peers,
 		electionCountdown:  config.ElectionCountdown(),
 		heartbeatCountdown: config.HeartbeatCountDown(),
-		ctx: ctx,
+		ctx:                ctx,
 	}
 }
 
@@ -85,7 +89,7 @@ func (s *RaftServer) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI,
 
 // Shutdown the RaftServer
 func (s *RaftServer) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Bool, error) {
-	log.Warnln("Shutdown")
+	log.WithFields(s.LogFields()).Warnln("Shutdown")
 	defer func() {
 		os.Exit(0)
 	}()
@@ -98,7 +102,7 @@ func (s *RaftServer) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Boo
 
 // RequestVote Raft request to ask peers to participate in a vote.
 func (s *RaftServer) RequestVote(_ context.Context, request *raftapi.RequestVoteMessage) (*raftapi.RequestVoteMessage, error) {
-	log.Debugln("Received RequestVote")
+	log.WithFields(s.LogFields()).Debugln("Received RequestVote")
 	s.lastHeartbeat = time.Now()
 	approve := s.votedOn < request.Term
 	if approve {
@@ -110,7 +114,7 @@ func (s *RaftServer) RequestVote(_ context.Context, request *raftapi.RequestVote
 // AppendEntry Raft request to append a LogEntry to the log.
 func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequest) (*raftapi.AppendEntryResponse, error) {
 	// TODO handle requests not from leader...?
-	log.Debugln("Received AppendEntry from", request.Leader)
+	log.WithFields(s.LogFields()).Debugln("Received AppendEntry from", request.Leader)
 	s.lastHeartbeat = time.Now()
 	var term uint64
 	if _, err := s.getTerm(); err != nil {
@@ -153,7 +157,7 @@ func (s *RaftServer) Run() error {
 
 func (s *RaftServer) produceHeartbeat() {
 	timeout := s.heartbeatCountdown
-	log.Debugln("heartbeat timeout", timeout)
+	log.WithFields(s.LogFields()).Debugln("heartbeat timeout", timeout)
 	for {
 		time.Sleep(timeout)
 		if s.role == Leader {
@@ -169,7 +173,7 @@ func (s *RaftServer) produceHeartbeat() {
 
 func (s *RaftServer) monitorHeartbeat() {
 	timeout := s.electionCountdown
-	log.Debugln("election timeout", timeout)
+	log.WithFields(s.LogFields()).Debugln("election timeout", timeout)
 	for {
 		time.Sleep(50 * time.Millisecond)
 		now := time.Now()
@@ -179,7 +183,7 @@ func (s *RaftServer) monitorHeartbeat() {
 			s.role = Candidate
 			if s.runElection() {
 				s.lastHeartbeat = time.Now()
-				log.Infoln("Role now", Leader)
+				log.WithFields(s.LogFields()).Infoln("Role now", Leader)
 				s.role = Leader
 			}
 		}
@@ -187,7 +191,7 @@ func (s *RaftServer) monitorHeartbeat() {
 }
 
 func (s *RaftServer) runElection() bool {
-	log.WithContext(s.ctx).Infoln("kicking off vote")
+	log.WithFields(s.LogFields()).Infoln("kicking off vote")
 	term, _ := s.getTerm()
 	term++
 	_ = s.setTerm(term)
@@ -251,4 +255,8 @@ func (s *RaftServer) setTerm(term uint64) error {
 		Term: term,
 	}
 	return s.statusRepo.Write(&status)
+}
+
+func (s *RaftServer) LogFields() log.Fields {
+	return log.Fields{"server_name": s.member.Name, "server_port": s.member.Port}
 }

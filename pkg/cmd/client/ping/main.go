@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/nwillc/goraft/pkg/raftapi"
-	"github.com/nwillc/goraft/pkg/model"
+	"github.com/nwillc/goraft/raftapi"
+	"github.com/nwillc/goraft/model"
 	"google.golang.org/grpc"
 	"log"
 )

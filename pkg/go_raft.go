@@ -25,6 +25,11 @@ func main() {
 		log.Fatalln("can not read config")
 	}
 
+	level, err := log.ParseLevel(*conf.MemberCli.LogLevel)
+	if err != nil {
+		log.Fatalln("can not parse log level", *conf.MemberCli.LogLevel)
+	}
+	log.SetLevel(level)
 	var member model.Member
 	var ok = false
 	for _, m := range config.Members {
