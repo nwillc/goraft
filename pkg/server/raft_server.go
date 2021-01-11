@@ -198,10 +198,11 @@ func (s *RaftServer) runElection() bool {
 	term, _ := s.getTerm()
 	term++
 	_ = s.setTerm(term)
+	logSize, _ := s.logRepo.RowCount()
 	s.votedOn = term
 	var votes = 1
 	for _, member := range s.peers {
-		resp, err := member.RequestVote(s.ctx, s.member.Name, term)
+		resp, err := member.RequestVote(s.ctx, s.member.Name, term, uint64(logSize))
 		if err != nil {
 			log.Errorf("%s: No response from %s\n", s.String(), member.String())
 			continue

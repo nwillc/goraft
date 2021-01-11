@@ -20,9 +20,9 @@ func main() {
 		os.Exit(conf.NormalExit)
 	}
 	rand.Seed(time.Now().UnixNano())
-	config, err := model.ReadConfig("config.json")
+	config, err := model.ReadConfig(*conf.MemberCli.ConfigFile)
 	if err != nil {
-		log.Fatalln("can not read config")
+		log.Fatalln("can not read config", *conf.MemberCli.ConfigFile)
 	}
 
 	level, err := log.ParseLevel(*conf.MemberCli.LogLevel)

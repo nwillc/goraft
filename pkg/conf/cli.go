@@ -7,6 +7,7 @@ var MemberCli struct {
 	Member   *string
 	Version  *bool
 	LogLevel *string
+	ConfigFile *string
 }
 
 // SetupMemberCli the CLI flags for members.
@@ -14,4 +15,5 @@ func SetupMemberCli() {
 	MemberCli.Member = flag.String("member", "one", "The member name.")
 	MemberCli.Version = flag.Bool("version", false, "Display version.")
 	MemberCli.LogLevel = flag.String("log-level", "info", "Logging level.")
+	MemberCli.ConfigFile = flag.String("config-file", ConfigFile, "Configuration file.")
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/nwillc/goraft/conf"
 	"github.com/nwillc/goraft/raftapi"
 	"github.com/nwillc/goraft/model"
 	"google.golang.org/grpc"
@@ -11,18 +12,20 @@ import (
 
 var ClientCli struct {
 	Member *string
+	ConfigFile *string
 }
 
 func SetupClientCli() {
 	ClientCli.Member = flag.String("member", "none", "The member name.")
+	ClientCli.ConfigFile = flag.String("config-file", conf.ConfigFile, "The configuration file.")
 }
 
 func main() {
 	SetupClientCli()
 	flag.Parse()
-	config, err := model.ReadConfig("config.json")
+	config, err := model.ReadConfig(*ClientCli.ConfigFile)
 	if err != nil {
-		log.Fatalln("can not read config")
+		log.Fatalln("can not read config", *ClientCli.ConfigFile)
 	}
 	var member model.Member
 	ok := false
