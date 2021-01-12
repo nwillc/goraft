@@ -36,17 +36,21 @@ func (l *LogEntryRepository) Migrate() error {
 	return nil
 }
 
-func (l *LogEntryRepository) Write(logEntry *model.LogEntry) error {
-	tx := l.db.Create(logEntry)
-	if tx.Error != nil {
-		return tx.Error
+func (l *LogEntryRepository) Write(term uint64, value int) (int64, error) {
+	entry := model.LogEntry{
+		Term:  term,
+		Value: value,
 	}
-	return nil
+	tx := l.db.Create(&entry)
+	if tx.Error != nil {
+		return -1, tx.Error
+	}
+	return entry.ID, nil
 }
 
-func (l *LogEntryRepository) Read(term uint64) (*model.LogEntry, error) {
+func (l *LogEntryRepository) Read(id int64) (*model.LogEntry, error) {
 	var logs []model.LogEntry
-	tx := l.db.Where("term = ?", term).Find(&logs)
+	tx := l.db.Where("id = ?", id).Find(&logs)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
@@ -59,6 +63,16 @@ func (l *LogEntryRepository) MaxTerm() (uint64, error) {
 	err := tx.Scan(&result)
 	if err != nil {
 		return 0, err
+	}
+	return result, nil
+}
+
+func (l *LogEntryRepository) MaxId() (int64, error) {
+	var result int64
+	tx := l.db.Model(&model.LogEntry{}).Select("max(id)").Row()
+	err := tx.Scan(&result)
+	if err != nil {
+		return -1, err
 	}
 	return result, nil
 }

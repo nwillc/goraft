@@ -27,21 +27,22 @@ func TestLogEntryRepositoryTestSuite(t *testing.T) {
 }
 
 func (suite *LogEntryRepositoryTestSuite) TestWriteRead() {
-	entry1 := model.LogEntry{Term: uint64(42), Value: 42}
-	err := suite.repo.Write(&entry1)
+	var term uint64 = 64
+	var value = 234
+	id, err := suite.repo.Write(term, value)
 	assert.NoError(suite.T(), err)
-	entry2, err := suite.repo.Read(entry1.Term)
+	entry2, err := suite.repo.Read(id)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), entry1.Term, entry2.Term)
-	assert.Equal(suite.T(), entry1.Value, entry2.Value)
+	assert.Equal(suite.T(), term, entry2.Term)
+	assert.Equal(suite.T(), value, entry2.Value)
 }
 
 func (suite *LogEntryRepositoryTestSuite) TestTermConstraint() {
-	entry1 := model.LogEntry{Term: uint64(80), Value: 80}
-	err := suite.repo.Write(&entry1)
+	var term uint64 = 80
+	var value = 80
+	_, err := suite.repo.Write(term, value)
 	assert.NoError(suite.T(), err)
-	entry2 := model.LogEntry{Term: uint64(80), Value: 800}
-	err = suite.repo.Write(&entry2)
+	_, err = suite.repo.Write(term, value + 1)
 	assert.Error(suite.T(), err)
 }
 
@@ -50,8 +51,7 @@ func (suite *LogEntryRepositoryTestSuite) TestCount() {
 	assert.NoError(suite.T(), err)
 	records := count + 20
 	for i := count + 1; i <= records; i++ {
-		entry := model.LogEntry{Term: uint64(i), Value: i}
-		err = suite.repo.Write(&entry)
+		_, err = suite.repo.Write(uint64(i), i)
 		assert.NoError(suite.T(), err, "failed on %d", i)
 	}
 	count2, err := suite.repo.RowCount()
@@ -62,14 +62,30 @@ func (suite *LogEntryRepositoryTestSuite) TestCount() {
 func (suite *LogEntryRepositoryTestSuite) TestMaxTerm() {
 	maxTerm := 10
 	for i := maxTerm; i > 0; i-- {
-		entry := model.LogEntry{
-			Term:  uint64(i),
-			Value: i,
-		}
-		err := suite.repo.Write(&entry)
+		_, err := suite.repo.Write(uint64(i), i)
 		assert.NoError(suite.T(), err)
 	}
 	max, err := suite.repo.MaxTerm()
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), uint64(maxTerm), max)
+}
+
+func (suite *LogEntryRepositoryTestSuite) TestMaxIdEmpty() {
+	truncate(suite.repo)
+	max, _ := suite.repo.MaxId()
+	assert.Equal(suite.T(), int64(-1), max)
+}
+
+func (suite *LogEntryRepositoryTestSuite) TestMaxId() {
+	truncate(suite.repo)
+	var term uint64 = 80
+	var value = 80
+	id, err := suite.repo.Write(term, value)
+	assert.NoError(suite.T(), err)
+	max, _ := suite.repo.MaxId()
+	assert.Equal(suite.T(), id, max)
+}
+
+func truncate(repo *LogEntryRepository)  {
+	repo.db.Where("1 = 1").Delete(&model.LogEntry{})
 }

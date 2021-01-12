@@ -34,7 +34,7 @@ message RequestVoteMessage {
 message AppendEntryRequest {
   uint64 term = 1;
   string leader = 2;
-  uint64 prevLogIndex = 3;
+  int64 prevLogId = 3;
   uint64 prevLogTerm = 4;
 }
 

@@ -41,6 +41,7 @@ type RaftServer struct {
 	statusRepo         *database.StatusRepository
 	logRepo            *database.LogEntryRepository
 	ctx                context.Context
+	leaderId           string
 }
 
 // RaftServer implements fmt.Stringer
@@ -119,8 +120,8 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 	// TODO handle requests not from leader...?
 	log.WithFields(s.LogFields()).Debugln("Received AppendEntry from", request.Leader)
 	s.lastHeartbeat = time.Now()
-	var term uint64
-	if _, err := s.getTerm(); err != nil {
+	term, err := s.getTerm()
+	if err != nil {
 		return nil, err
 	}
 	if request.Term < term {
@@ -131,7 +132,13 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 			return nil, err
 		}
 	}
-	return &raftapi.AppendEntryResponse{Term: term, Success: true}, nil
+	s.leaderId = request.Leader
+	maxId, err := s.logRepo.MaxId()
+	if request.PrevLogId == -1 || request.PrevLogId < maxId {
+		return &raftapi.AppendEntryResponse{Term: term, Success: true}, nil
+	} else {
+		return &raftapi.AppendEntryResponse{Term: term}, nil
+	}
 }
 
 /*
