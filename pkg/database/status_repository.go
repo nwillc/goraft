@@ -57,3 +57,7 @@ func (s *StatusRepository) Read(name string) (*model.Status, error) {
 	}
 	return &statuses[0], nil
 }
+
+func (s *StatusRepository) previousMax() (uint64, error)  {
+	panic("not implemented")
+}

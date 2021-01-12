@@ -36,6 +36,15 @@ func (suite *LogEntryRepositoryTestSuite) TestWriteRead() {
 	assert.Equal(suite.T(), entry1.Value, entry2.Value)
 }
 
+func (suite *LogEntryRepositoryTestSuite) TestTermConstraint() {
+	entry1 := model.LogEntry{Term: uint64(80), Value: 80}
+	err := suite.repo.Write(&entry1)
+	assert.NoError(suite.T(), err)
+	entry2 := model.LogEntry{Term: uint64(80), Value: 800}
+	err = suite.repo.Write(&entry2)
+	assert.Error(suite.T(), err)
+}
+
 func (suite *LogEntryRepositoryTestSuite) TestCount() {
 	count, err := suite.repo.RowCount()
 	assert.NoError(suite.T(), err)
@@ -48,4 +57,19 @@ func (suite *LogEntryRepositoryTestSuite) TestCount() {
 	count2, err := suite.repo.RowCount()
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), count+records, count2)
+}
+
+func (suite *LogEntryRepositoryTestSuite) TestMaxTerm() {
+	maxTerm := 10
+	for i := maxTerm; i > 0; i-- {
+		entry := model.LogEntry{
+			Term:  uint64(i),
+			Value: i,
+		}
+		err := suite.repo.Write(&entry)
+		assert.NoError(suite.T(), err)
+	}
+	max, err := suite.repo.MaxTerm()
+	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), uint64(maxTerm), max)
 }

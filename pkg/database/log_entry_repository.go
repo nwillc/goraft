@@ -52,3 +52,13 @@ func (l *LogEntryRepository) Read(term uint64) (*model.LogEntry, error) {
 	}
 	return &logs[0], nil
 }
+
+func (l *LogEntryRepository) MaxTerm() (uint64, error) {
+	var result uint64
+	tx := l.db.Model(&model.LogEntry{}).Select("max(term)").Row()
+	err := tx.Scan(&result)
+	if err != nil {
+		return 0, err
+	}
+	return result, nil
+}
