@@ -8,6 +8,7 @@ import (
 // LogEntryRepository is a GormRepository focused on model.LogEntry.
 type LogEntryRepository struct {
 	db *gorm.DB
+	repoModel *model.LogEntry
 }
 
 // LogEntryRepository implements Repository
@@ -17,6 +18,7 @@ var _ GormRepository = (*LogEntryRepository)(nil)
 func NewLogEntryRepository(db *gorm.DB) (*LogEntryRepository, error) {
 	repo := LogEntryRepository{
 		db: db,
+		repoModel: &model.LogEntry{},
 	}
 	return &repo, nil
 }
@@ -24,13 +26,13 @@ func NewLogEntryRepository(db *gorm.DB) (*LogEntryRepository, error) {
 // RowCount returns the row count LogEntryRepository.
 func (l *LogEntryRepository) RowCount() (int, error) {
 	var count int64
-	l.db.Model(&model.LogEntry{}).Count(&count)
+	l.db.Model(l.repoModel).Count(&count)
 	return int(count), nil
 }
 
 // Migrate the schema for the LogEntryRepository.
 func (l *LogEntryRepository) Migrate() error {
-	if err := l.db.AutoMigrate(&model.LogEntry{}); err != nil {
+	if err := l.db.AutoMigrate(l.repoModel); err != nil {
 		return err
 	}
 	return nil
@@ -68,13 +70,13 @@ func (l *LogEntryRepository) Update(id int64, term uint64, value int64) error {
 		Term:    term,
 		Value:   value,
 	}
-	tx := l.db.Model(&entry).Where("entry_no = ?", id).Updates(entry)
+	tx := l.db.Model(l.repoModel).Where("entry_no = ?", id).Updates(entry)
 	return tx.Error
 }
 
 func (l *LogEntryRepository) MaxTerm() (uint64, error) {
 	var result uint64
-	tx := l.db.Model(&model.LogEntry{}).Select("max(term)").Row()
+	tx := l.db.Model(l.repoModel).Select("max(term)").Row()
 	err := tx.Scan(&result)
 	if err != nil {
 		return 0, err
@@ -84,7 +86,7 @@ func (l *LogEntryRepository) MaxTerm() (uint64, error) {
 
 func (l *LogEntryRepository) MaxEntryNo() (int64, error) {
 	var result int64
-	tx := l.db.Model(&model.LogEntry{}).Select("max(entry_no)").Row()
+	tx := l.db.Model(l.repoModel).Select("max(entry_no)").Row()
 	err := tx.Scan(&result)
 	if err != nil {
 		return -1, err
@@ -93,6 +95,6 @@ func (l *LogEntryRepository) MaxEntryNo() (int64, error) {
 }
 
 func (l *LogEntryRepository) TruncateToEntryNo(entryNo int64) error {
-	tx := l.db.Where("row_entry > ?", entryNo).Delete(&model.LogEntry{})
+	tx := l.db.Where("entry_no > ?", entryNo).Delete(l.repoModel)
 	return tx.Error
 }
