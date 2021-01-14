@@ -133,9 +133,24 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 		}
 	}
 	s.leaderId = request.Leader
-	maxId, err := s.logRepo.MaxId()
+	maxId, _ := s.logRepo.MaxIndex()
 	if request.PrevLogId == -1 || request.PrevLogId < maxId {
-		return &raftapi.AppendEntryResponse{Term: term, Success: true}, nil
+		entry, _ := s.logRepo.Read(request.PrevLogId)
+		if entry.Term != request.PrevLogTerm {
+			return &raftapi.AppendEntryResponse{Term: term}, nil
+		} else {
+			switch x := request.LogEntry.(type) {
+			case *raftapi.AppendEntryRequest_Entry:
+			// Todo append
+				s.logRepo.Create(x.Entry.Term, x.Entry.Value)
+			case nil:
+			// No entry
+			default:
+				log.WithFields(s.LogFields()).Errorf("Unknown request log entry type %T", x)
+				return nil, err
+			}
+			return &raftapi.AppendEntryResponse{Term: term, Success: true}, nil
+		}
 	} else {
 		return &raftapi.AppendEntryResponse{Term: term}, nil
 	}

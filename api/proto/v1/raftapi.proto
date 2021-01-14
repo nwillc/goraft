@@ -10,6 +10,10 @@ message Empty{}
 
 message Bool {bool status = 1;}
 
+message  LogEntry {
+  uint64 term = 1;
+  int64 value = 2;
+}
 
 /*
   Management Messages
@@ -36,6 +40,9 @@ message AppendEntryRequest {
   string leader = 2;
   int64 prevLogId = 3;
   uint64 prevLogTerm = 4;
+  oneof logEntry {
+    LogEntry entry = 5;
+  };
 }
 
 message AppendEntryResponse {

@@ -43,6 +43,6 @@ func main() {
 		log.Fatalln("No config for member:", *conf.MemberCli.Member)
 	}
 	srv := server.NewRaftServer(member, config, "")
-	log.Infoln("Running server")
+	log.WithFields(srv.LogFields()).Infoln("Running server")
 	log.Fatalln(srv.Run())
 }
