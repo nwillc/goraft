@@ -52,7 +52,7 @@ func (l *LogEntryRepository) Create(term uint64, value int64) (int64, error) {
 	if tx.Error != nil || tx.RowsAffected != 1 {
 		return -1, tx.Error
 	}
-	return entry.EntryNo, nil
+	return int64(index), nil
 }
 
 func (l *LogEntryRepository) Read(id int64) (*model.LogEntry, error) {
@@ -86,10 +86,17 @@ func (l *LogEntryRepository) MaxTerm() (uint64, error) {
 
 func (l *LogEntryRepository) MaxEntryNo() (int64, error) {
 	var result int64
-	tx := l.db.Model(l.repoModel).Select("max(entry_no)").Row()
-	err := tx.Scan(&result)
-	if err != nil {
-		return -1, err
+	tx := l.db.Model(l.repoModel).Select("coalesce(max(entry_no),-1)")
+	if tx.Error != nil {
+		return -1, tx.Error
+	}
+	row := tx.Row()
+	if row.Err() != nil {
+		return -1, tx.Error
+	}
+	tx2 := tx.Scan(&result)
+	if tx2.Error != nil {
+		return -1, tx2.Error
 	}
 	return result, nil
 }

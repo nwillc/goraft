@@ -44,3 +44,14 @@ func (c *Config) ElectionCountdown() time.Duration {
 func (c *Config) HeartbeatCountDown() time.Duration {
 	return time.Duration(c.HeartbeatTimeout) * time.Millisecond
 }
+
+func (c *Config) Peers(memberName string) []Member {
+	var peers []Member
+	for _, peer := range c.Members {
+		if peer.Name == memberName {
+			continue
+		}
+		peers = append(peers, peer)
+	}
+	return peers
+}

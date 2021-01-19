@@ -13,7 +13,7 @@ type LogEntryRepositoryTestSuite struct {
 
 func (suite *LogEntryRepositoryTestSuite) SetupTest() {
 	suite.T().Helper()
-	db := tempDB(suite.T())
+	db := TempDB(suite.T())
 	repo, err := NewLogEntryRepository(db)
 	assert.NoError(suite.T(), err)
 	suite.repo = repo
@@ -79,12 +79,23 @@ func (suite *LogEntryRepositoryTestSuite) TestMaxEntryNoEmptyTable() {
 	assert.Equal(suite.T(), int64(-1), max)
 }
 
+func (suite *LogEntryRepositoryTestSuite) TestMaxEntryNoEmpty() {
+	truncate(suite.repo)
+	entryNo, err := suite.repo.MaxEntryNo()
+	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), int64(-1), entryNo)
+}
+
 func (suite *LogEntryRepositoryTestSuite) TestMaxEntryNo() {
 	truncate(suite.repo)
+	count, err :=suite.repo.RowCount()
+	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), 0, count)
 	var term uint64 = 80
 	var value int64 = 80
 	id, err := suite.repo.Create(term, value)
 	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), int64(0), id)
 	max, err := suite.repo.MaxEntryNo()
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), id, max)

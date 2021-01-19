@@ -15,7 +15,7 @@ type StatusRepositoryTestSuite struct {
 
 func (suite *StatusRepositoryTestSuite) SetupTest() {
 	suite.T().Helper()
-	db := tempDB(suite.T())
+	db := TempDB(suite.T())
 	repo, err := NewStatusRepository(db)
 	assert.NoError(suite.T(), err)
 	suite.repo = repo

@@ -39,6 +39,9 @@ func (suite *RaftServerTestSuite) TestRaftServerSanity() {
 	assert.Nil(suite.T(), suite.server.statusRepo)
 	assert.NoError(suite.T(), suite.server.setupRepositories())
 	assert.NotNil(suite.T(), suite.server.statusRepo)
+	term, err := suite.server.getTerm()
+	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), uint64(0), term)
 }
 
 func (suite *RaftServerTestSuite) TestPersistTerm() {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/nwillc/goraft/raftapi"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
@@ -27,7 +27,8 @@ func (m *Member) Address() string {
 }
 
 // AppendEntry request of a Member.
-func (m *Member) AppendEntry(leader string, term uint64) (uint64, error) {
+func (m *Member) AppendEntry(leader string, term uint64, value int64) (uint64, error) {
+	log.Infoln("Requesting log entry of", m.Name, "Value", value)
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())
 	if err != nil {
@@ -36,9 +37,16 @@ func (m *Member) AppendEntry(leader string, term uint64) (uint64, error) {
 	defer conn.Close()
 	api := raftapi.NewRaftServiceClient(conn)
 	ctx := context.Background()
+	ee := raftapi.AppendEntryRequest_Entry{
+		Entry: &raftapi.LogEntry{
+			Term:  term,
+			Value: value,
+		},
+	}
 	response, err := api.AppendEntry(ctx, &raftapi.AppendEntryRequest{
 		Term:        term,
 		Leader:      leader,
+		LogEntry: &ee,
 	})
 	if err != nil {
 		return 0, err
@@ -50,7 +58,7 @@ func (m *Member) AppendEntry(leader string, term uint64) (uint64, error) {
 // RequestVote request of a Member.
 func (m *Member) RequestVote(ctx context.Context, leader string, term uint64, logSize uint64) (*raftapi.RequestVoteMessage, error) {
 	ctx = context.WithValue(ctx, "member_name", m.Name)
-	logrus.WithContext(ctx).Debugln("Requesting vote from")
+	log.WithContext(ctx).Debugln("Requesting vote from")
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())
 	if err != nil {
