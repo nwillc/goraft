@@ -41,7 +41,7 @@ type RaftServer struct {
 	statusRepo         *database.StatusRepository
 	logRepo            *database.LogEntryRepository
 	ctx                context.Context
-	leaderId           string
+	leaderID           string
 }
 
 // RaftServer implements fmt.Stringer
@@ -88,6 +88,7 @@ func (s *RaftServer) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Boo
 	return &raftapi.Bool{Status: true}, nil
 }
 
+// AppendValue requests the leader to append a log value to the raft log
 func (s *RaftServer) AppendValue(_ context.Context, value *raftapi.Value) (*raftapi.Bool, error) {
 	log.WithFields(s.LogFields()).Infoln("received request to append", value.Value)
 	if s.role != Leader {
@@ -138,8 +139,8 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 			return nil, err
 		}
 	}
-	s.leaderId = request.Leader
-	maxId, _ := s.logRepo.MaxEntryNo()
+	s.leaderID = request.Leader
+	maxID, _ := s.logRepo.MaxEntryNo()
 	if request.PrevLogId == -1 {
 		switch entry := request.LogEntry.(type) {
 		case *raftapi.AppendEntryRequest_Entry:
@@ -152,26 +153,25 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 				Success: true,
 			}, nil
 		}
-	} else if request.PrevLogId <= maxId {
+	} else if request.PrevLogId <= maxID {
 		entry, _ := s.logRepo.Read(request.PrevLogId)
 		if entry.Term != request.PrevLogTerm {
 			log.WithFields(s.LogFields()).Warnln("Entry term", entry.Term, "not equal to previous term", request.PrevLogTerm)
 			return &raftapi.AppendEntryResponse{Term: term}, nil
-		} else {
-			switch x := request.LogEntry.(type) {
-			case *raftapi.AppendEntryRequest_Entry:
-				log.Infoln("Appending Term", x.Entry.Term, "Value", x.Entry.Value)
-				_, _ = s.logRepo.Create(x.Entry.Term, x.Entry.Value)
-			case nil:
-				// No entry
-				log.WithFields(s.LogFields()).Warnln("No entry")
-			default:
-				log.WithFields(s.LogFields()).Errorf("Unknown request log entry type %T", x)
-				return nil, err
-			}
-			log.WithFields(s.LogFields()).Infoln("Returning success")
-			return &raftapi.AppendEntryResponse{Term: term, Success: true}, nil
 		}
+		switch x := request.LogEntry.(type) {
+		case *raftapi.AppendEntryRequest_Entry:
+			log.Infoln("Appending Term", x.Entry.Term, "Value", x.Entry.Value)
+			_, _ = s.logRepo.Create(x.Entry.Term, x.Entry.Value)
+		case nil:
+			// No entry
+			log.WithFields(s.LogFields()).Warnln("No entry")
+		default:
+			log.WithFields(s.LogFields()).Errorf("Unknown request log entry type %T", x)
+			return nil, err
+		}
+		log.WithFields(s.LogFields()).Infoln("Returning success")
+		return &raftapi.AppendEntryResponse{Term: term, Success: true}, nil
 	} else {
 		log.WithFields(s.LogFields()).Warnln("Returning nil")
 		return &raftapi.AppendEntryResponse{Term: term}, nil
@@ -306,6 +306,7 @@ func (s *RaftServer) setTerm(term uint64) error {
 	return s.statusRepo.Write(&status)
 }
 
+// LogFields creates a log.Fields with this RaftServer's name and port info
 func (s *RaftServer) LogFields() log.Fields {
 	return log.Fields{"server_name": s.member.Name, "server_port": s.member.Port}
 }

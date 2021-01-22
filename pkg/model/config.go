@@ -45,6 +45,7 @@ func (c *Config) HeartbeatCountDown() time.Duration {
 	return time.Duration(c.HeartbeatTimeout) * time.Millisecond
 }
 
+// Peers returns the slice of Member's that are peers to memberName in the configs Members
 func (c *Config) Peers(memberName string) []Member {
 	var peers []Member
 	for _, peer := range c.Members {
