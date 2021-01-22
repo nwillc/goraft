@@ -52,11 +52,6 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 	if database == "" {
 		database = member.Name + ".db"
 	}
-	fields := log.Fields{
-		"server_name": member.Name,
-		"server_port": member.Port,
-	}
-	ctx := context.WithValue(context.Background(), "fields", fields)
 	return &RaftServer{
 		member:             member,
 		lastHeartbeat:      time.Now(),
@@ -66,7 +61,7 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 		peers:              config.Peers(member.Name),
 		electionCountdown:  config.ElectionCountdown(),
 		heartbeatCountdown: config.HeartbeatCountDown(),
-		ctx:                ctx,
+		ctx:                context.Background(),
 	}
 }
 
@@ -146,7 +141,7 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 	s.leaderId = request.Leader
 	maxId, _ := s.logRepo.MaxEntryNo()
 	if request.PrevLogId == -1 {
-		switch entry  := request.LogEntry.(type) {
+		switch entry := request.LogEntry.(type) {
 		case *raftapi.AppendEntryRequest_Entry:
 			_, err = s.logRepo.Create(entry.Entry.Term, entry.Entry.Value)
 			if err != nil {
@@ -157,7 +152,7 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 				Success: true,
 			}, nil
 		}
-	} else if request.PrevLogId < maxId {
+	} else if request.PrevLogId <= maxId {
 		entry, _ := s.logRepo.Read(request.PrevLogId)
 		if entry.Term != request.PrevLogTerm {
 			log.WithFields(s.LogFields()).Warnln("Entry term", entry.Term, "not equal to previous term", request.PrevLogTerm)
@@ -168,7 +163,7 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 				log.Infoln("Appending Term", x.Entry.Term, "Value", x.Entry.Value)
 				_, _ = s.logRepo.Create(x.Entry.Term, x.Entry.Value)
 			case nil:
-			// No entry
+				// No entry
 				log.WithFields(s.LogFields()).Warnln("No entry")
 			default:
 				log.WithFields(s.LogFields()).Errorf("Unknown request log entry type %T", x)
