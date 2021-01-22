@@ -7,7 +7,7 @@ import (
 
 // LogEntryRepository is a GormRepository focused on model.LogEntry.
 type LogEntryRepository struct {
-	db *gorm.DB
+	db        *gorm.DB
 	repoModel *model.LogEntry
 }
 
@@ -17,7 +17,7 @@ var _ GormRepository = (*LogEntryRepository)(nil)
 // NewLogEntryRepository instantiates a LogEntryRepository.
 func NewLogEntryRepository(db *gorm.DB) (*LogEntryRepository, error) {
 	repo := LogEntryRepository{
-		db: db,
+		db:        db,
 		repoModel: &model.LogEntry{},
 	}
 	return &repo, nil

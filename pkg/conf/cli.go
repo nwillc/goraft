@@ -4,9 +4,9 @@ import "flag"
 
 // MemberCli are the CLI flags for member operations.
 var MemberCli struct {
-	Member   *string
-	Version  *bool
-	LogLevel *string
+	Member     *string
+	Version    *bool
+	LogLevel   *string
 	ConfigFile *string
 }
 

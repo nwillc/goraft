@@ -41,12 +41,12 @@ func (suite *LogEntryRepositoryTestSuite) TestUpdate() {
 	var value int64 = 234
 	entryNo, err := suite.repo.Create(term, value)
 	assert.NoError(suite.T(), err)
-	err = suite.repo.Update(entryNo, term + 1, value + 1)
+	err = suite.repo.Update(entryNo, term+1, value+1)
 	assert.NoError(suite.T(), err)
 	entry2, err := suite.repo.Read(entryNo)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), term + 1, entry2.Term)
-	assert.Equal(suite.T(), value + 1, entry2.Value)
+	assert.Equal(suite.T(), term+1, entry2.Term)
+	assert.Equal(suite.T(), value+1, entry2.Value)
 }
 
 func (suite *LogEntryRepositoryTestSuite) TestCount() {
@@ -88,7 +88,7 @@ func (suite *LogEntryRepositoryTestSuite) TestMaxEntryNoEmpty() {
 
 func (suite *LogEntryRepositoryTestSuite) TestMaxEntryNo() {
 	truncate(suite.repo)
-	count, err :=suite.repo.RowCount()
+	count, err := suite.repo.RowCount()
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), 0, count)
 	var term uint64 = 80
@@ -102,5 +102,5 @@ func (suite *LogEntryRepositoryTestSuite) TestMaxEntryNo() {
 }
 
 func truncate(repo *LogEntryRepository) {
-	repo.TruncateToEntryNo(-1)
+	_ = repo.TruncateToEntryNo(-1)
 }

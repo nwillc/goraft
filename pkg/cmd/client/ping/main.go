@@ -4,14 +4,14 @@ import (
 	"context"
 	"flag"
 	"github.com/nwillc/goraft/conf"
-	"github.com/nwillc/goraft/raftapi"
 	"github.com/nwillc/goraft/model"
+	"github.com/nwillc/goraft/raftapi"
 	"google.golang.org/grpc"
 	"log"
 )
 
 var ClientCli struct {
-	Member *string
+	Member     *string
 	ConfigFile *string
 }
 

@@ -44,8 +44,8 @@ func (m *Member) AppendEntry(leader string, term uint64, value int64) (uint64, e
 		},
 	}
 	response, err := api.AppendEntry(ctx, &raftapi.AppendEntryRequest{
-		Term:        term,
-		Leader:      leader,
+		Term:     term,
+		Leader:   leader,
 		LogEntry: &ee,
 	})
 	if err != nil {
@@ -57,8 +57,7 @@ func (m *Member) AppendEntry(leader string, term uint64, value int64) (uint64, e
 
 // RequestVote request of a Member.
 func (m *Member) RequestVote(ctx context.Context, leader string, term uint64, logSize uint64) (*raftapi.RequestVoteMessage, error) {
-	ctx = context.WithValue(ctx, "member_name", m.Name)
-	log.WithContext(ctx).Debugln("Requesting vote from")
+	log.WithFields(log.Fields{"member_name": m.Name}).Debugln("Requesting vote from")
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())
 	if err != nil {
