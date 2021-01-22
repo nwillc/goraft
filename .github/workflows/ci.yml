@@ -20,12 +20,15 @@ jobs:
         go get -u golang.org/x/lint/golint
 
     - name: Build
+      working-directory: ./pkg
       run: go build ./...
 
     - name: Test
+      working-directory: ./pkg
       run: go test -v ./...
 
     - name: Run Vet & Lint
+      working-directory: ./pkg
       run: |
         go vet ./...
         golint -set_exit_status=1 ./..
