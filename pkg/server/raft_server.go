@@ -140,7 +140,11 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 		}
 	}
 	s.leaderID = request.Leader
-	maxID, _ := s.logRepo.MaxEntryNo()
+	maxID, err := s.logRepo.MaxEntryNo()
+	if err != nil {
+		log.WithFields(s.LogFields()).Errorln("Could not look up MaxEntryNo", err)
+		return nil, err
+	}
 	if request.PrevLogId == -1 {
 		switch entry := request.LogEntry.(type) {
 		case *raftapi.AppendEntryRequest_Entry:
@@ -289,10 +293,7 @@ func (s *RaftServer) setupRepositories() error {
 
 func (s *RaftServer) getTerm() (uint64, error) {
 	status, err := s.statusRepo.Read(s.member.Name)
-	if err != nil {
-		return 0, err
-	}
-	if status == nil {
+	if err != nil || status == nil {
 		return 0, nil
 	}
 	return status.Term, nil
