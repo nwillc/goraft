@@ -6,11 +6,11 @@ option go_package = ".;raftapi";
 /*
   Basic Types
  */
-message Empty{}
+message Empty {}
 
 message Bool {bool status = 1;}
 
-message Value { int64 value = 1; }
+message Value {int64 value = 1;}
 
 message  LogEntry {
   uint64 term = 1;
@@ -52,11 +52,16 @@ message AppendEntryResponse {
   bool success = 2;
 }
 
+message EntryListResponse {
+  repeated LogEntry entries = 1;
+}
+
 service RaftService {
   // Client API Requests
   rpc Ping(Empty) returns (WhoAmI) {}
   rpc Shutdown(Empty) returns (Bool) {}
   rpc AppendValue(Value) returns (Bool) {}
+  rpc ListEntries(Empty) returns (EntryListResponse) {}
 
   // Raft Protocol Requests
   rpc RequestVote(RequestVoteMessage) returns (RequestVoteMessage) {}

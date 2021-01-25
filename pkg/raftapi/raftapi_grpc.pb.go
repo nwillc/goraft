@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // RaftServiceClient is the client API for RaftService service.
@@ -21,6 +22,7 @@ type RaftServiceClient interface {
 	Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*WhoAmI, error)
 	Shutdown(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Bool, error)
 	AppendValue(ctx context.Context, in *Value, opts ...grpc.CallOption) (*Bool, error)
+	ListEntries(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*EntryListResponse, error)
 	// Raft Protocol Requests
 	RequestVote(ctx context.Context, in *RequestVoteMessage, opts ...grpc.CallOption) (*RequestVoteMessage, error)
 	AppendEntry(ctx context.Context, in *AppendEntryRequest, opts ...grpc.CallOption) (*AppendEntryResponse, error)
@@ -61,6 +63,15 @@ func (c *raftServiceClient) AppendValue(ctx context.Context, in *Value, opts ...
 	return out, nil
 }
 
+func (c *raftServiceClient) ListEntries(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*EntryListResponse, error) {
+	out := new(EntryListResponse)
+	err := c.cc.Invoke(ctx, "/raftapi.RaftService/ListEntries", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *raftServiceClient) RequestVote(ctx context.Context, in *RequestVoteMessage, opts ...grpc.CallOption) (*RequestVoteMessage, error) {
 	out := new(RequestVoteMessage)
 	err := c.cc.Invoke(ctx, "/raftapi.RaftService/RequestVote", in, out, opts...)
@@ -87,6 +98,7 @@ type RaftServiceServer interface {
 	Ping(context.Context, *Empty) (*WhoAmI, error)
 	Shutdown(context.Context, *Empty) (*Bool, error)
 	AppendValue(context.Context, *Value) (*Bool, error)
+	ListEntries(context.Context, *Empty) (*EntryListResponse, error)
 	// Raft Protocol Requests
 	RequestVote(context.Context, *RequestVoteMessage) (*RequestVoteMessage, error)
 	AppendEntry(context.Context, *AppendEntryRequest) (*AppendEntryResponse, error)
@@ -105,6 +117,9 @@ func (UnimplementedRaftServiceServer) Shutdown(context.Context, *Empty) (*Bool, 
 }
 func (UnimplementedRaftServiceServer) AppendValue(context.Context, *Value) (*Bool, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendValue not implemented")
+}
+func (UnimplementedRaftServiceServer) ListEntries(context.Context, *Empty) (*EntryListResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListEntries not implemented")
 }
 func (UnimplementedRaftServiceServer) RequestVote(context.Context, *RequestVoteMessage) (*RequestVoteMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestVote not implemented")
@@ -179,6 +194,24 @@ func _RaftService_AppendValue_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RaftService_ListEntries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RaftServiceServer).ListEntries(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/raftapi.RaftService/ListEntries",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RaftServiceServer).ListEntries(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RaftService_RequestVote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestVoteMessage)
 	if err := dec(in); err != nil {
@@ -233,6 +266,10 @@ var RaftService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AppendValue",
 			Handler:    _RaftService_AppendValue_Handler,
+		},
+		{
+			MethodName: "ListEntries",
+			Handler:    _RaftService_ListEntries_Handler,
 		},
 		{
 			MethodName: "RequestVote",

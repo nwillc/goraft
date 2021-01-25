@@ -47,6 +47,9 @@ type RaftServer struct {
 // RaftServer implements fmt.Stringer
 var _ fmt.Stringer = (*RaftServer)(nil)
 
+// RaftServer implements raftapi.RaftServiceServer
+var _ raftapi.RaftServiceServer = (*RaftServer)(nil)
+
 // NewRaftServer function to instantiate a RaftServer
 func NewRaftServer(member model.Member, config model.Config, database string) *RaftServer {
 	if database == "" {
@@ -102,6 +105,10 @@ func (s *RaftServer) AppendValue(_ context.Context, value *raftapi.Value) (*raft
 		_, _ = member.AppendEntry(s.member.Name, term, value.Value)
 	}
 	return &raftapi.Bool{Status: true}, nil
+}
+
+func (s *RaftServer) ListEntries(_ context.Context, _ *raftapi.Empty) (*raftapi.EntryListResponse, error) {
+	panic("not implemented")
 }
 
 /*
