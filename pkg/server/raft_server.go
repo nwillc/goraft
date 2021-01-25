@@ -108,7 +108,19 @@ func (s *RaftServer) AppendValue(_ context.Context, value *raftapi.Value) (*raft
 }
 
 func (s *RaftServer) ListEntries(_ context.Context, _ *raftapi.Empty) (*raftapi.EntryListResponse, error) {
-	panic("not implemented")
+	list, err := s.logRepo.List()
+	if err != nil {
+		return nil, err
+	}
+	var logEntries []*raftapi.LogEntry
+	for _, entry := range list {
+		logEntries = append(logEntries, &raftapi.LogEntry{
+			Term:  entry.Term,
+			Value: entry.Value,
+		})
+	}
+	response := &raftapi.EntryListResponse{ Entries: logEntries}
+	return response, nil
 }
 
 /*
