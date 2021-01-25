@@ -74,6 +74,15 @@ func (l *LogEntryRepository) Update(id int64, term uint64, value int64) error {
 	return tx.Error
 }
 
+func (l *LogEntryRepository) List() ([]model.LogEntry, error) {
+	var entries []model.LogEntry
+	tx := l.db.Find(&entries)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	return entries, nil
+}
+
 func (l *LogEntryRepository) MaxTerm() (uint64, error) {
 	var result uint64
 	tx := l.db.Model(l.repoModel).Select("max(term)").Row()
@@ -101,6 +110,7 @@ func (l *LogEntryRepository) MaxEntryNo() (int64, error) {
 	return result, nil
 }
 
+// TruncateToEntryNo deletes all entries with entryNo greater than provided value.
 func (l *LogEntryRepository) TruncateToEntryNo(entryNo int64) error {
 	tx := l.db.Where("entry_no > ?", entryNo).Delete(l.repoModel)
 	return tx.Error

@@ -49,6 +49,25 @@ func (suite *LogEntryRepositoryTestSuite) TestUpdate() {
 	assert.Equal(suite.T(), value+1, entry2.Value)
 }
 
+func (suite *LogEntryRepositoryTestSuite) TestList() {
+	err := suite.repo.TruncateToEntryNo(-1)
+	assert.NoError(suite.T(), err)
+	entries := 10
+	for i := 0; i < entries; i++ {
+		_, err = suite.repo.Create(uint64(i), int64(i))
+		assert.NoError(suite.T(), err)
+	}
+
+	list, err := suite.repo.List()
+	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), entries, len(list))
+	for i, entry := range list {
+		assert.Equal(suite.T(), int64(i), entry.EntryNo)
+		assert.Equal(suite.T(), uint64(i), entry.Term)
+		assert.Equal(suite.T(), int64(i), entry.Value)
+	}
+}
+
 func (suite *LogEntryRepositoryTestSuite) TestCount() {
 	count, err := suite.repo.RowCount()
 	assert.NoError(suite.T(), err)
