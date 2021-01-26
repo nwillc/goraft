@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"github.com/nwillc/goraft/conf"
 	"github.com/nwillc/goraft/model"
 	"github.com/nwillc/goraft/raftapi"
@@ -53,7 +52,11 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to List Entries", err)
 	}
-	for _, entry :=  range entries.Entries {
-		fmt.Println(entry)
+	if entries == nil || entries.Entries == nil  {
+		log.Fatal("No entries")
+	}
+	log.Println("Entries", entries)
+	for i, entry :=  range entries.Entries {
+		log.Printf("%s[%d] = %d", member.Name, i, entry.Value)
 	}
 }

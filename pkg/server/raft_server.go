@@ -112,7 +112,7 @@ func (s *RaftServer) ListEntries(_ context.Context, _ *raftapi.Empty) (*raftapi.
 	if err != nil {
 		return nil, err
 	}
-	var logEntries []*raftapi.LogEntry
+	var logEntries = make([]*raftapi.LogEntry, 0)
 	for _, entry := range list {
 		logEntries = append(logEntries, &raftapi.LogEntry{
 			Term:  entry.Term,
