@@ -122,6 +122,6 @@ func (suite *RaftServerAppendEntryTestSuite) TestTwoSuccessiveEntries() {
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), 2, len(entries.Entries))
 	for i, entry := range entries.Entries {
-		assert.Equal(suite.T(), int64(42 + i), entry.Value)
+		assert.Equal(suite.T(), int64(42+i), entry.Value)
 	}
 }

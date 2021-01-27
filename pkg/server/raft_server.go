@@ -74,7 +74,8 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 
 // Ping the RaftServer
 func (s *RaftServer) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI, error) {
-	log.Println("Ping")
+	log.WithFields(s.LogFields()).Debugln("Received Ping")
+	s.lastHeartbeat = time.Now()
 	return &raftapi.WhoAmI{
 		Name: s.member.Name,
 		Port: s.member.Port,
@@ -95,22 +96,41 @@ func (s *RaftServer) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Boo
 func (s *RaftServer) AppendValue(_ context.Context, value *raftapi.Value) (*raftapi.Bool, error) {
 	log.WithFields(s.LogFields()).Infoln("received request to append", value.Value)
 	if s.role != Leader {
-		msg := "Request to append log to non leader"
+		msg := "request to append log to non leader"
 		log.WithFields(s.LogFields()).Errorf(msg)
-		return nil, fmt.Errorf(msg)
+		return nil, model.RaftError{Member: &s.member, Err: fmt.Errorf(msg)}
 	}
 	term, _ := s.getTerm()
-	// TODO: Retry and consensus
-	for _, member := range s.peers {
-		_, _ = member.AppendEntry(s.member.Name, term, value.Value)
+	prevLogId, _ := s.logRepo.MaxEntryNo()
+	// My entry
+	_, err := s.logRepo.Create(term, value.Value)
+	if err != nil {
+		return nil, model.RaftError{Member: &s.member, Err: err}
 	}
-	return &raftapi.Bool{Status: true}, nil
+	// TODO: Retry
+	var succeeded = 0.0
+	for _, member := range s.peers {
+		success, err := member.AppendEntry(s.member.Name, term, value.Value, prevLogId)
+		if err != nil {
+			log.Errorln(err)
+			continue
+		}
+		if success {
+			succeeded++
+		}
+	}
+
+	quorum := succeeded >= float64(len(s.peers))/2.0
+	if !quorum {
+		_ = s.logRepo.TruncateToEntryNo(prevLogId)
+	}
+	return &raftapi.Bool{Status: quorum}, nil
 }
 
 func (s *RaftServer) ListEntries(_ context.Context, _ *raftapi.Empty) (*raftapi.EntryListResponse, error) {
 	list, err := s.logRepo.List()
 	if err != nil {
-		return nil, err
+		return nil, model.RaftError{Member: &s.member, Err: err}
 	}
 	var logEntries = make([]*raftapi.LogEntry, 0)
 	for _, entry := range list {
@@ -119,7 +139,7 @@ func (s *RaftServer) ListEntries(_ context.Context, _ *raftapi.Empty) (*raftapi.
 			Value: entry.Value,
 		})
 	}
-	response := &raftapi.EntryListResponse{ Entries: logEntries}
+	response := &raftapi.EntryListResponse{Entries: logEntries}
 	return response, nil
 }
 
@@ -146,7 +166,7 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 	term, err := s.getTerm()
 	if err != nil {
 		log.WithFields(s.LogFields()).Errorln("Could not look up term", err)
-		return nil, err
+		return nil, model.RaftError{Member: &s.member, Err: err}
 	}
 	if request.Term < term {
 		log.WithFields(s.LogFields()).Warnln("Term", request.Term, "Less than my term", term)
@@ -155,21 +175,21 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 		s.role = Follower
 		if err := s.setTerm(request.Term); err != nil {
 			log.WithFields(s.LogFields()).Errorln("Unable to update my term")
-			return nil, err
+			return nil, model.RaftError{Member: &s.member, Err: err}
 		}
 	}
 	s.leaderID = request.Leader
 	maxID, err := s.logRepo.MaxEntryNo()
 	if err != nil {
 		log.WithFields(s.LogFields()).Errorln("Could not look up MaxEntryNo", err)
-		return nil, err
+		return nil, model.RaftError{Member: &s.member, Err: err}
 	}
 	if request.PrevLogId == -1 {
 		switch entry := request.LogEntry.(type) {
 		case *raftapi.AppendEntryRequest_Entry:
 			_, err = s.logRepo.Create(entry.Entry.Term, entry.Entry.Value)
 			if err != nil {
-				return nil, err
+				return nil, model.RaftError{Member: &s.member, Err: err}
 			}
 			return &raftapi.AppendEntryResponse{
 				Term:    term,
@@ -191,15 +211,15 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 			log.WithFields(s.LogFields()).Warnln("No entry")
 		default:
 			log.WithFields(s.LogFields()).Errorf("Unknown request log entry type %T", x)
-			return nil, err
+			return nil, model.RaftError{Member: &s.member, Err: err}
 		}
 		log.WithFields(s.LogFields()).Infoln("Returning success")
 		return &raftapi.AppendEntryResponse{Term: term, Success: true}, nil
 	} else {
-		log.WithFields(s.LogFields()).Warnln("Returning nil")
+		log.WithFields(s.LogFields()).Warnf("Previous ID: %d, MaxID: %d, returning nil", request.PrevLogId, maxID)
 		return &raftapi.AppendEntryResponse{Term: term}, nil
 	}
-	return nil, err
+	return nil, model.RaftError{Member: &s.member, Err: fmt.Errorf("unknown code path")}
 }
 
 /*
@@ -232,11 +252,9 @@ func (s *RaftServer) produceHeartbeat() {
 	for {
 		time.Sleep(timeout)
 		if s.role == Leader {
-			// TODO handle error
-			term, _ := s.getTerm()
 			s.lastHeartbeat = time.Now()
 			for _, member := range s.peers {
-				_, _ = member.AppendEntry(s.member.Name, term, 0)
+				_ = member.Ping()
 			}
 		}
 	}

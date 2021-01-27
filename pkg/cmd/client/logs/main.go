@@ -52,11 +52,11 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to List Entries", err)
 	}
-	if entries == nil || entries.Entries == nil  {
+	if entries == nil || entries.Entries == nil {
 		log.Fatal("No entries")
 	}
 	log.Println("Entries", entries)
-	for i, entry :=  range entries.Entries {
+	for i, entry := range entries.Entries {
 		log.Printf("%s[%d] = %d", member.Name, i, entry.Value)
 	}
 }

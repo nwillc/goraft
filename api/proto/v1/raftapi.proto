@@ -17,6 +17,11 @@ message  LogEntry {
   int64 value = 2;
 }
 
+message ErrorMsg {
+  string source = 1;
+  string message = 2;
+}
+
 /*
   Management Messages
  */

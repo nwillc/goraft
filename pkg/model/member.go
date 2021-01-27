@@ -26,13 +26,29 @@ func (m *Member) Address() string {
 	return fmt.Sprintf(":%d", m.Port)
 }
 
+func (m *Member) Ping() error {
+	var conn *grpc.ClientConn
+	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())
+	if err != nil {
+		return RaftError{Member: m, Err: err}
+	}
+	defer conn.Close()
+	api := raftapi.NewRaftServiceClient(conn)
+	ctx := context.Background()
+	_, err = api.Ping(ctx, &raftapi.Empty{})
+	if err != nil {
+		return RaftError{Member: m, Err: err}
+	}
+	return nil
+}
+
 // AppendEntry request of a Member.
-func (m *Member) AppendEntry(leader string, term uint64, value int64) (uint64, error) {
+func (m *Member) AppendEntry(leader string, term uint64, value int64, prevLogId int64) (bool, error) {
 	log.Infoln("Requesting log entry of", m.Name, "Value", value)
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())
 	if err != nil {
-		return 0, err
+		return false, RaftError{Member: m, Err: err}
 	}
 	defer conn.Close()
 	api := raftapi.NewRaftServiceClient(conn)
@@ -44,15 +60,17 @@ func (m *Member) AppendEntry(leader string, term uint64, value int64) (uint64, e
 		},
 	}
 	response, err := api.AppendEntry(ctx, &raftapi.AppendEntryRequest{
-		Term:     term,
-		Leader:   leader,
-		LogEntry: &ee,
+		Term:        term,
+		Leader:      leader,
+		PrevLogId:   prevLogId,
+		PrevLogTerm: term,
+		LogEntry:    &ee,
 	})
 	if err != nil {
-		return 0, err
+		return false, RaftError{Member: m, Err: err}
 	}
 
-	return response.Term, nil
+	return response.Success, nil
 }
 
 // RequestVote request of a Member.
