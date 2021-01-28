@@ -98,14 +98,14 @@ func (s *RaftServer) AppendValue(_ context.Context, value *raftapi.Value) (*raft
 	if s.role != Leader {
 		msg := "request to append log to non leader"
 		log.WithFields(s.LogFields()).Errorf(msg)
-		return nil, model.RaftError{Member: &s.member, Err: fmt.Errorf(msg)}
+		return nil, model.NewRaftError(&s.member, fmt.Errorf(msg))
 	}
 	term, _ := s.getTerm()
 	prevLogId, _ := s.logRepo.MaxEntryNo()
 	// My entry
 	_, err := s.logRepo.Create(term, value.Value)
 	if err != nil {
-		return nil, model.RaftError{Member: &s.member, Err: err}
+		return nil, model.NewRaftError(&s.member, err)
 	}
 	// TODO: Retry
 	var succeeded = 0.0
@@ -130,7 +130,7 @@ func (s *RaftServer) AppendValue(_ context.Context, value *raftapi.Value) (*raft
 func (s *RaftServer) ListEntries(_ context.Context, _ *raftapi.Empty) (*raftapi.EntryListResponse, error) {
 	list, err := s.logRepo.List()
 	if err != nil {
-		return nil, model.RaftError{Member: &s.member, Err: err}
+		return nil, model.NewRaftError(&s.member, err)
 	}
 	var logEntries = make([]*raftapi.LogEntry, 0)
 	for _, entry := range list {
@@ -166,7 +166,7 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 	term, err := s.getTerm()
 	if err != nil {
 		log.WithFields(s.LogFields()).Errorln("Could not look up term", err)
-		return nil, model.RaftError{Member: &s.member, Err: err}
+		return nil, model.NewRaftError(&s.member, err)
 	}
 	if request.Term < term {
 		log.WithFields(s.LogFields()).Warnln("Term", request.Term, "Less than my term", term)
@@ -175,21 +175,21 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 		s.role = Follower
 		if err := s.setTerm(request.Term); err != nil {
 			log.WithFields(s.LogFields()).Errorln("Unable to update my term")
-			return nil, model.RaftError{Member: &s.member, Err: err}
+			return nil, model.NewRaftError(&s.member, err)
 		}
 	}
 	s.leaderID = request.Leader
 	maxID, err := s.logRepo.MaxEntryNo()
 	if err != nil {
 		log.WithFields(s.LogFields()).Errorln("Could not look up MaxEntryNo", err)
-		return nil, model.RaftError{Member: &s.member, Err: err}
+		return nil, model.NewRaftError(&s.member, err)
 	}
 	if request.PrevLogId == -1 {
 		switch entry := request.LogEntry.(type) {
 		case *raftapi.AppendEntryRequest_Entry:
 			_, err = s.logRepo.Create(entry.Entry.Term, entry.Entry.Value)
 			if err != nil {
-				return nil, model.RaftError{Member: &s.member, Err: err}
+				return nil, model.NewRaftError(&s.member, err)
 			}
 			return &raftapi.AppendEntryResponse{
 				Term:    term,
@@ -211,7 +211,7 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 			log.WithFields(s.LogFields()).Warnln("No entry")
 		default:
 			log.WithFields(s.LogFields()).Errorf("Unknown request log entry type %T", x)
-			return nil, model.RaftError{Member: &s.member, Err: err}
+			return nil, model.NewRaftError(&s.member, err)
 		}
 		log.WithFields(s.LogFields()).Infoln("Returning success")
 		return &raftapi.AppendEntryResponse{Term: term, Success: true}, nil
@@ -219,7 +219,7 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 		log.WithFields(s.LogFields()).Warnf("Previous ID: %d, MaxID: %d, returning nil", request.PrevLogId, maxID)
 		return &raftapi.AppendEntryResponse{Term: term}, nil
 	}
-	return nil, model.RaftError{Member: &s.member, Err: fmt.Errorf("unknown code path")}
+	return nil, model.NewRaftError(&s.member, fmt.Errorf("unknown code path"))
 }
 
 /*

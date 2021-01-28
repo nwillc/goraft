@@ -30,14 +30,14 @@ func (m *Member) Ping() error {
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())
 	if err != nil {
-		return RaftError{Member: m, Err: err}
+		return NewRaftError(m, err)
 	}
 	defer conn.Close()
 	api := raftapi.NewRaftServiceClient(conn)
 	ctx := context.Background()
 	_, err = api.Ping(ctx, &raftapi.Empty{})
 	if err != nil {
-		return RaftError{Member: m, Err: err}
+		return NewRaftError(m, err)
 	}
 	return nil
 }
@@ -48,7 +48,7 @@ func (m *Member) AppendEntry(leader string, term uint64, value int64, prevLogId 
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())
 	if err != nil {
-		return false, RaftError{Member: m, Err: err}
+		return false, NewRaftError(m, err)
 	}
 	defer conn.Close()
 	api := raftapi.NewRaftServiceClient(conn)
@@ -67,7 +67,7 @@ func (m *Member) AppendEntry(leader string, term uint64, value int64, prevLogId 
 		LogEntry:    &ee,
 	})
 	if err != nil {
-		return false, RaftError{Member: m, Err: err}
+		return false, NewRaftError(m, err)
 	}
 
 	return response.Success, nil
