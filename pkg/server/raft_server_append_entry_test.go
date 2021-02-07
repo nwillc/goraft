@@ -71,9 +71,9 @@ func (suite *RaftServerAppendEntryTestSuite) TestFirstEntry() {
 }
 
 func (suite *RaftServerAppendEntryTestSuite) TestTwoSuccessiveEntries() {
-	enrtyNo, err := suite.server.logRepo.MaxEntryNo()
+	entryNo, err := suite.server.logRepo.MaxEntryNo()
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(-1), enrtyNo)
+	assert.Equal(suite.T(), int64(-1), entryNo)
 	term := uint64(0)
 	value := int64(42)
 	entry := &raftapi.AppendEntryRequest_Entry{
@@ -93,10 +93,10 @@ func (suite *RaftServerAppendEntryTestSuite) TestTwoSuccessiveEntries() {
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), true, response.Success)
 	assert.Equal(suite.T(), term, response.Term)
-	enrtyNo, err = suite.server.logRepo.MaxEntryNo()
+	entryNo, err = suite.server.logRepo.MaxEntryNo()
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(0), enrtyNo)
-	logEntry, err := suite.server.logRepo.Read(enrtyNo)
+	assert.Equal(suite.T(), int64(0), entryNo)
+	logEntry, err := suite.server.logRepo.Read(entryNo)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), term, logEntry.Term)
 	assert.Equal(suite.T(), value, logEntry.Value)

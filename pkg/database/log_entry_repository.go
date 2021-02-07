@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"github.com/nwillc/goraft/model"
 	"gorm.io/gorm"
 )
@@ -108,6 +109,15 @@ func (l *LogEntryRepository) MaxEntryNo() (int64, error) {
 		return -1, tx2.Error
 	}
 	return result, nil
+}
+
+func (l *LogEntryRepository) LastEntry() (*model.LogEntry, error) {
+	var logEntry model.LogEntry
+	tx := l.db.Where("entry_no = (?)", l.db.Model(l.repoModel).Select("max(entry_no)")).Find(&logEntry)
+	if tx.Error != nil || tx.RowsAffected == 0 {
+		return nil, fmt.Errorf("failed to get last entry %v, %d", tx.Error, tx.RowsAffected)
+	}
+	return &logEntry, nil
 }
 
 // TruncateToEntryNo deletes all entries with entryNo greater than provided value.

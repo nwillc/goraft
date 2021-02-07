@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 func main() {
 	conf.SetupMemberCli()
 	flag.Parse()
@@ -19,7 +23,6 @@ func main() {
 		fmt.Printf("version %s\n", "unknown")
 		os.Exit(conf.NormalExit)
 	}
-	rand.Seed(time.Now().UnixNano())
 	config, err := model.ReadConfig(*conf.MemberCli.ConfigFile)
 	if err != nil {
 		log.Fatalln("can not read config", *conf.MemberCli.ConfigFile)

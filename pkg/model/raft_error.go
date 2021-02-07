@@ -7,14 +7,14 @@ import (
 // RaftError is an error noting the Raft Member
 type RaftError struct {
 	Member *Member
-	Errors    []error
+	Errors []error
 }
 
 // RaftError implements error
 var _ error = RaftError{}
 
 // NewRaftError new RaftError
-func NewRaftError(member *Member, errors ...error)  RaftError {
+func NewRaftError(member *Member, errors ...error) RaftError {
 	return RaftError{
 		Member: member,
 		Errors: errors,

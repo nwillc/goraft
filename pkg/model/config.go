@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -55,4 +56,14 @@ func (c *Config) Peers(memberName string) []Member {
 		peers = append(peers, peer)
 	}
 	return peers
+}
+
+// GetMember finds the Member with name in a Config.
+func (c *Config) GetMember(name string) (*Member, error) {
+	for _, member := range c.Members {
+		if member.Name == name {
+			return &member, nil
+		}
+	}
+	return nil, fmt.Errorf("member %s not in config", name)
 }

@@ -6,12 +6,12 @@ import (
 	"github.com/nwillc/goraft/database"
 	"github.com/nwillc/goraft/model"
 	"github.com/nwillc/goraft/raftapi"
+	"github.com/nwillc/goraft/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"net"
-	"os"
 	"time"
 )
 
@@ -25,6 +25,14 @@ const (
 	Leader Role = "LEADER"
 	// Follower Role
 	Follower Role = "FOLLOWER"
+)
+
+type State string
+
+const (
+	Ready    State = "READY"
+	Running  State = "RUNNING"
+	Shutdown State = "SHUTDOWN"
 )
 
 // RaftServer holds data needed by a Raft Server
@@ -42,6 +50,8 @@ type RaftServer struct {
 	logRepo            *database.LogEntryRepository
 	ctx                context.Context
 	leaderID           string
+	onExit             *util.FunctionChain
+	state              State
 }
 
 // RaftServer implements fmt.Stringer
@@ -55,7 +65,7 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 	if database == "" {
 		database = member.Name + ".db"
 	}
-	return &RaftServer{
+	rf := RaftServer{
 		member:             member,
 		lastHeartbeat:      time.Now(),
 		role:               Follower,
@@ -65,7 +75,14 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 		electionCountdown:  config.ElectionCountdown(),
 		heartbeatCountdown: config.HeartbeatCountDown(),
 		ctx:                context.Background(),
+		state:              Ready,
+		onExit:             &util.FunctionChain{},
 	}
+	rf.onExit.Add(func() {
+		rf.state = Shutdown
+		log.WithFields(rf.LogFields()).Infoln("State set to", rf.state)
+	})
+	return &rf
 }
 
 /*
@@ -86,9 +103,10 @@ func (s *RaftServer) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI,
 // Shutdown the RaftServer
 func (s *RaftServer) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Bool, error) {
 	log.WithFields(s.LogFields()).Warnln("Shutdown")
-	defer func() {
-		os.Exit(0)
-	}()
+	s.onExit.Add(func() {
+		s.state = Shutdown
+	})
+	s.onExit.InvokeReverse()
 	return &raftapi.Bool{Status: true}, nil
 }
 
@@ -101,16 +119,23 @@ func (s *RaftServer) AppendValue(_ context.Context, value *raftapi.Value) (*raft
 		return nil, model.NewRaftError(&s.member, fmt.Errorf(msg))
 	}
 	term, _ := s.getTerm()
-	prevLogId, _ := s.logRepo.MaxEntryNo()
+	lastEntry, err := s.logRepo.LastEntry()
+	if err != nil {
+		lastEntry = &model.LogEntry{
+			EntryNo: -1,
+			Term:    0,
+			Value:   0,
+		}
+	}
 	// My entry
-	_, err := s.logRepo.Create(term, value.Value)
+	_, err = s.logRepo.Create(term, value.Value)
 	if err != nil {
 		return nil, model.NewRaftError(&s.member, err)
 	}
 	// TODO: Retry
 	var succeeded = 0.0
 	for _, member := range s.peers {
-		success, err := member.AppendEntry(s.member.Name, term, value.Value, prevLogId)
+		success, err := member.AppendEntry(s.member.Name, term, value.Value, lastEntry.EntryNo)
 		if err != nil {
 			log.Errorln(err)
 			continue
@@ -122,7 +147,7 @@ func (s *RaftServer) AppendValue(_ context.Context, value *raftapi.Value) (*raft
 
 	quorum := succeeded >= float64(len(s.peers))/2.0
 	if !quorum {
-		_ = s.logRepo.TruncateToEntryNo(prevLogId)
+		_ = s.logRepo.TruncateToEntryNo(lastEntry.EntryNo)
 	}
 	return &raftapi.Bool{Status: quorum}, nil
 }
@@ -232,6 +257,7 @@ func (s *RaftServer) String() string {
 
 // Run the RaftServer
 func (s *RaftServer) Run() error {
+	log.WithFields(s.LogFields()).Infoln("Running")
 	if err := s.setupRepositories(); err != nil {
 		return err
 	}
@@ -239,11 +265,17 @@ func (s *RaftServer) Run() error {
 	if err != nil {
 		return err
 	}
-	srv := grpc.NewServer()
-	raftapi.RegisterRaftServiceServer(srv, s)
+	server := grpc.NewServer()
+	s.onExit = s.onExit.Add(func() {
+		log.WithFields(s.LogFields()).Infoln("Stopping grpc")
+		server.GracefulStop()
+		s.state = Shutdown
+	})
+	raftapi.RegisterRaftServiceServer(server, s)
 	go s.monitorHeartbeat()
 	go s.produceHeartbeat()
-	return srv.Serve(listen)
+	s.state = Running
+	return server.Serve(listen)
 }
 
 func (s *RaftServer) produceHeartbeat() {
@@ -251,6 +283,9 @@ func (s *RaftServer) produceHeartbeat() {
 	log.WithFields(s.LogFields()).Debugln("heartbeat timeout", timeout)
 	for {
 		time.Sleep(timeout)
+		if s.state == Shutdown {
+			break
+		}
 		if s.role == Leader {
 			s.lastHeartbeat = time.Now()
 			for _, member := range s.peers {
@@ -258,6 +293,7 @@ func (s *RaftServer) produceHeartbeat() {
 			}
 		}
 	}
+	log.WithFields(s.LogFields()).Infoln("No longer producing heartbeats")
 }
 
 func (s *RaftServer) monitorHeartbeat() {
@@ -265,6 +301,9 @@ func (s *RaftServer) monitorHeartbeat() {
 	log.WithFields(s.LogFields()).Debugln("election timeout", timeout)
 	for {
 		time.Sleep(50 * time.Millisecond)
+		if s.state == Shutdown {
+			break
+		}
 		now := time.Now()
 		if now.Sub(s.lastHeartbeat) > timeout {
 			log.Debugf("Last Heartbeat: %d, now: %d", s.lastHeartbeat.Unix(), now.Unix())
@@ -277,6 +316,7 @@ func (s *RaftServer) monitorHeartbeat() {
 			}
 		}
 	}
+	log.WithFields(s.LogFields()).Infoln("No longer monitoring heartbeats")
 }
 
 func (s *RaftServer) runElection() bool {
@@ -325,6 +365,11 @@ func (s *RaftServer) setupRepositories() error {
 	}
 	s.statusRepo = sRepo
 	s.logRepo = lRepo
+	s.onExit = s.onExit.Add(func() {
+		log.WithFields(s.LogFields()).Infoln("Closing database")
+		sqlDb, _ := db.DB()
+		_ = sqlDb.Close()
+	})
 	return nil
 }
 
@@ -347,4 +392,12 @@ func (s *RaftServer) setTerm(term uint64) error {
 // LogFields creates a log.Fields with this RaftServer's name and port info
 func (s *RaftServer) LogFields() log.Fields {
 	return log.Fields{"server_name": s.member.Name, "server_port": s.member.Port}
+}
+
+func (s *RaftServer) GetRole() Role {
+	return s.role
+}
+
+func (s *RaftServer) GetState() State {
+	return s.state
 }

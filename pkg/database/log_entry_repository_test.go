@@ -120,6 +120,28 @@ func (suite *LogEntryRepositoryTestSuite) TestMaxEntryNo() {
 	assert.Equal(suite.T(), id, max)
 }
 
+func (suite *LogEntryRepositoryTestSuite) TestLastEntryNoEntries() {
+	truncate(suite.repo)
+	_, err := suite.repo.LastEntry()
+	assert.Error(suite.T(), err)
+}
+
+func (suite *LogEntryRepositoryTestSuite) TestLastEntry() {
+	truncate(suite.repo)
+	var term uint64 = 80
+	var value int64 = 80
+	_, err := suite.repo.Create(term, value)
+	assert.NoError(suite.T(), err)
+	term++
+	value++
+	_, err = suite.repo.Create(term, value)
+	assert.NoError(suite.T(), err)
+	entry, err := suite.repo.LastEntry()
+	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), term, entry.Term)
+	assert.Equal(suite.T(), value, entry.Value)
+}
+
 func truncate(repo *LogEntryRepository) {
 	_ = repo.TruncateToEntryNo(-1)
 }
