@@ -152,6 +152,7 @@ func (s *RaftServer) AppendValue(_ context.Context, value *raftapi.Value) (*raft
 	return &raftapi.Bool{Status: quorum}, nil
 }
 
+// ListEntries returns the RaftServer's persisted log entries.
 func (s *RaftServer) ListEntries(_ context.Context, _ *raftapi.Empty) (*raftapi.EntryListResponse, error) {
 	list, err := s.logRepo.List()
 	if err != nil {
@@ -394,10 +395,12 @@ func (s *RaftServer) LogFields() log.Fields {
 	return log.Fields{"server_name": s.member.Name, "server_port": s.member.Port}
 }
 
+// GetRole returns the RaftServer's Role.
 func (s *RaftServer) GetRole() Role {
 	return s.role
 }
 
+// GetState returns the RaftServer's State.
 func (s *RaftServer) GetState() State {
 	return s.state
 }

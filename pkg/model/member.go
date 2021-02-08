@@ -43,7 +43,7 @@ func (m *Member) Ping() error {
 }
 
 // AppendEntry request of a Member.
-func (m *Member) AppendEntry(leader string, term uint64, value int64, prevLogID	 int64) (bool, error) {
+func (m *Member) AppendEntry(leader string, term uint64, value int64, prevLogID int64) (bool, error) {
 	log.Infoln("Requesting log entry of", m.Name, "Value", value)
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())

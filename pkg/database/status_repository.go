@@ -27,7 +27,7 @@ func (s *StatusRepository) RowCount() (int, error) {
 	return int(count), nil
 }
 
-// Migrate the scheme for this repoitory.
+// Migrate the scheme for this repository.
 func (s *StatusRepository) Migrate() error {
 	if err := s.db.AutoMigrate(&model.Status{}); err != nil {
 		return err
