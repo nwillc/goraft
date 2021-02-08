@@ -23,9 +23,12 @@ jobs:
       working-directory: ./pkg
       run: go build ./...
 
-    - name: Test
+    - name: Test With Coverage
       working-directory: ./pkg
-      run: go test -v ./...
+      run: go test -gcflags=-l -v  -coverprofile=coverage.txt -covermode=atomic ./...
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v1
 
     - name: Run Vet & Lint
       working-directory: ./pkg
