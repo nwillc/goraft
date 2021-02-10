@@ -25,7 +25,7 @@ jobs:
 
     - name: Test With Coverage
       working-directory: ./pkg
-      run: go test -gcflags=-l -v  -coverprofile=coverage.txt -covermode=atomic ./...
+      run: go test -gcflags=-l -v  -coverprofile=../coverage.txt -covermode=atomic ./...
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
