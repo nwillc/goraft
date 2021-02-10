@@ -25,15 +25,15 @@ func TestRaffTestSuite(t *testing.T) {
 }
 
 func (suite RaftErrorTestSuite) TestSingleError() {
-	err :=  fmt.Errorf("foo")
+	err := fmt.Errorf("foo")
 	raftError := NewRaftError(suite.member, err)
 	assert.NotNil(suite.T(), raftError)
 	assert.Equal(suite.T(), fmt.Sprintf("member: %s error_0: %s", suite.member.Name, err.Error()), raftError.Error())
 }
 
-func (suite RaftErrorTestSuite) TestSDoubleError() {
-	err1 :=  fmt.Errorf("foo")
-	err2 :=  fmt.Errorf("bar")
+func (suite RaftErrorTestSuite) TestDoubleError() {
+	err1 := fmt.Errorf("foo")
+	err2 := fmt.Errorf("bar")
 	raftError := NewRaftError(suite.member, err1, err2)
 	assert.NotNil(suite.T(), raftError)
 	assert.Equal(suite.T(), fmt.Sprintf("member: %s error_0: %s error_1: %s",

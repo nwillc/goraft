@@ -47,9 +47,7 @@ message AppendEntryRequest {
   string leader = 2;
   int64 prevLogId = 3;
   uint64 prevLogTerm = 4;
-  oneof logEntry {
-    LogEntry entry = 5;
-  };
+  LogEntry entry = 5;
 }
 
 message AppendEntryResponse {
