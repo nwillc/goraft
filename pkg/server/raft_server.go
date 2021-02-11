@@ -118,7 +118,7 @@ func (s *RaftServer) AppendValue(_ context.Context, value *raftapi.Value) (*raft
 		log.WithFields(s.LogFields()).Errorf(msg)
 		return nil, model.NewRaftError(&s.member, fmt.Errorf(msg))
 	}
-	term, _ := s.getTerm()
+	term := s.getTerm()
 	lastEntry, err := s.logRepo.LastEntry()
 	if err != nil {
 		lastEntry = &model.LogEntry{
@@ -177,13 +177,9 @@ func (s *RaftServer) ListEntries(_ context.Context, _ *raftapi.Empty) (*raftapi.
 func (s *RaftServer) RequestVote(_ context.Context, request *raftapi.RequestVoteMessage) (*raftapi.RequestVoteResponse, error) {
 	log.WithFields(s.LogFields()).Debugln("Received RequestVote")
 	s.lastHeartbeat = time.Now()
-	term, err := s.getTerm()
-	if err != nil {
-		log.WithFields(s.LogFields()).Errorln("Could not look up term", err)
-		return nil, model.NewRaftError(&s.member, err)
-	}
+	term := s.getTerm()
 	// If I'm behind the request's term I've lost track
-	if term > request.Term {
+	if request.Term < term {
 		log.WithFields(s.LogFields()).Warn("My term is ahead of the term of the requested to vote on.")
 		return &raftapi.RequestVoteResponse{
 			Term: term,
@@ -204,11 +200,7 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 	// TODO handle requests not from leader...?
 	log.WithFields(s.LogFields()).Debugln("Received AppendEntry from", request.Leader)
 	s.lastHeartbeat = time.Now()
-	term, err := s.getTerm()
-	if err != nil {
-		log.WithFields(s.LogFields()).Errorln("Could not look up term", err)
-		return nil, model.NewRaftError(&s.member, err)
-	}
+	term := s.getTerm()
 	if request.Term < term {
 		log.WithFields(s.LogFields()).Warnln("Term", request.Term, "Less than my term", term)
 		return &raftapi.AppendEntryResponse{Term: term}, nil
@@ -328,7 +320,7 @@ func (s *RaftServer) monitorHeartbeat() {
 
 func (s *RaftServer) runElection() bool {
 	log.WithFields(s.LogFields()).Infoln("kicking off vote")
-	term, _ := s.getTerm()
+	term := s.getTerm()
 	term++
 	_ = s.setTerm(term)
 	logSize, _ := s.logRepo.MaxTerm()
@@ -380,12 +372,12 @@ func (s *RaftServer) setupRepositories() error {
 	return nil
 }
 
-func (s *RaftServer) getTerm() (uint64, error) {
+func (s *RaftServer) getTerm() uint64 {
 	status, err := s.statusRepo.Read(s.member.Name)
 	if err != nil || status == nil {
-		return 0, nil
+		return 0
 	}
-	return status.Term, nil
+	return status.Term
 }
 
 func (s *RaftServer) setTerm(term uint64) error {
