@@ -74,7 +74,7 @@ func (m *Member) AppendEntry(leader string, term uint64, value int64, prevLogID 
 }
 
 // RequestVote request of a Member.
-func (m *Member) RequestVote(ctx context.Context, leader string, term uint64, logSize uint64) (*raftapi.RequestVoteMessage, error) {
+func (m *Member) RequestVote(ctx context.Context, leader string, term uint64, logSize uint64) (*raftapi.RequestVoteResponse, error) {
 	log.WithFields(log.Fields{"member_name": m.Name}).Debugln("Requesting vote from")
 	var conn *grpc.ClientConn
 	conn, err := grpc.Dial(m.Address(), grpc.WithInsecure())

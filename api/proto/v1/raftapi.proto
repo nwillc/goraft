@@ -42,6 +42,11 @@ message RequestVoteMessage {
   uint32 lastLogTerm = 4;
 }
 
+message RequestVoteResponse {
+  uint64 term = 1;
+  bool approved = 2;
+}
+
 message AppendEntryRequest {
   uint64 term = 1;
   string leader = 2;
@@ -69,6 +74,6 @@ service RaftService {
   rpc ListEntries(Empty) returns (EntryListResponse) {}
 
   // Raft Protocol Requests
-  rpc RequestVote(RequestVoteMessage) returns (RequestVoteMessage) {}
+  rpc RequestVote(RequestVoteMessage) returns (RequestVoteResponse) {}
   rpc AppendEntry(AppendEntryRequest) returns (AppendEntryResponse) {}
 }

@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/nwillc/goraft/conf"
 	"github.com/nwillc/goraft/model"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
@@ -26,6 +27,7 @@ func (suite *RaftServerTestSuite) SetupTest() {
 	suite.T().Cleanup(func() {
 		_ = os.Remove(tempFile.Name())
 	})
+	log.SetLevel(log.WarnLevel)
 	suite.server = NewRaftServer(member, config, tempFile.Name())
 }
 

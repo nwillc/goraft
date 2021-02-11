@@ -174,14 +174,22 @@ func (s *RaftServer) ListEntries(_ context.Context, _ *raftapi.Empty) (*raftapi.
 */
 
 // RequestVote Raft request to ask peers to participate in a vote.
-func (s *RaftServer) RequestVote(_ context.Context, request *raftapi.RequestVoteMessage) (*raftapi.RequestVoteMessage, error) {
+func (s *RaftServer) RequestVote(_ context.Context, request *raftapi.RequestVoteMessage) (*raftapi.RequestVoteResponse, error) {
 	log.WithFields(s.LogFields()).Debugln("Received RequestVote")
 	s.lastHeartbeat = time.Now()
+	term, err := s.getTerm()
+	if err  != nil {
+		log.WithFields(s.LogFields()).Errorln("Could not look up term", err)
+		return nil, model.NewRaftError(&s.member, err)
+	}
 	approve := s.votedOn < request.Term
 	if approve {
 		s.votedOn = request.Term
 	}
-	return request, nil
+	return &raftapi.RequestVoteResponse{
+		Term:     term,
+		Approved: approve,
+	}, nil
 }
 
 // AppendEntry Raft request to append a LogEntry to the log.

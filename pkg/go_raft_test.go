@@ -24,7 +24,7 @@ type GoRaftTestSuite struct {
 
 func (suite *GoRaftTestSuite) SetupTest() {
 	suite.T().Helper()
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.WarnLevel)
 }
 
 func TestGoRaftTestSuite(t *testing.T) {

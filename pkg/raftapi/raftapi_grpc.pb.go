@@ -24,7 +24,7 @@ type RaftServiceClient interface {
 	AppendValue(ctx context.Context, in *Value, opts ...grpc.CallOption) (*Bool, error)
 	ListEntries(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*EntryListResponse, error)
 	// Raft Protocol Requests
-	RequestVote(ctx context.Context, in *RequestVoteMessage, opts ...grpc.CallOption) (*RequestVoteMessage, error)
+	RequestVote(ctx context.Context, in *RequestVoteMessage, opts ...grpc.CallOption) (*RequestVoteResponse, error)
 	AppendEntry(ctx context.Context, in *AppendEntryRequest, opts ...grpc.CallOption) (*AppendEntryResponse, error)
 }
 
@@ -72,8 +72,8 @@ func (c *raftServiceClient) ListEntries(ctx context.Context, in *Empty, opts ...
 	return out, nil
 }
 
-func (c *raftServiceClient) RequestVote(ctx context.Context, in *RequestVoteMessage, opts ...grpc.CallOption) (*RequestVoteMessage, error) {
-	out := new(RequestVoteMessage)
+func (c *raftServiceClient) RequestVote(ctx context.Context, in *RequestVoteMessage, opts ...grpc.CallOption) (*RequestVoteResponse, error) {
+	out := new(RequestVoteResponse)
 	err := c.cc.Invoke(ctx, "/raftapi.RaftService/RequestVote", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ type RaftServiceServer interface {
 	AppendValue(context.Context, *Value) (*Bool, error)
 	ListEntries(context.Context, *Empty) (*EntryListResponse, error)
 	// Raft Protocol Requests
-	RequestVote(context.Context, *RequestVoteMessage) (*RequestVoteMessage, error)
+	RequestVote(context.Context, *RequestVoteMessage) (*RequestVoteResponse, error)
 	AppendEntry(context.Context, *AppendEntryRequest) (*AppendEntryResponse, error)
 	mustEmbedUnimplementedRaftServiceServer()
 }
@@ -121,7 +121,7 @@ func (UnimplementedRaftServiceServer) AppendValue(context.Context, *Value) (*Boo
 func (UnimplementedRaftServiceServer) ListEntries(context.Context, *Empty) (*EntryListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListEntries not implemented")
 }
-func (UnimplementedRaftServiceServer) RequestVote(context.Context, *RequestVoteMessage) (*RequestVoteMessage, error) {
+func (UnimplementedRaftServiceServer) RequestVote(context.Context, *RequestVoteMessage) (*RequestVoteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestVote not implemented")
 }
 func (UnimplementedRaftServiceServer) AppendEntry(context.Context, *AppendEntryRequest) (*AppendEntryResponse, error) {

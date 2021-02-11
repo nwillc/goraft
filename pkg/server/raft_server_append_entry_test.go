@@ -5,6 +5,7 @@ import (
 	"github.com/nwillc/goraft/conf"
 	"github.com/nwillc/goraft/model"
 	"github.com/nwillc/goraft/raftapi"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
@@ -32,6 +33,7 @@ func (suite *RaftServerAppendEntryTestSuite) SetupTest() {
 	err = suite.server.setupRepositories()
 	assert.NoError(suite.T(), err)
 	suite.ctx = context.Background()
+	log.SetLevel(log.WarnLevel)
 }
 
 func TestRaftServerAppendEntrySuite(t *testing.T) {
