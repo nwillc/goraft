@@ -53,18 +53,15 @@ func (m *Member) AppendEntry(leader string, term uint64, value int64, prevLogID 
 	defer conn.Close()
 	api := raftapi.NewRaftServiceClient(conn)
 	ctx := context.Background()
-	ee := raftapi.AppendEntryRequest_Entry{
-		Entry: &raftapi.LogEntry{
-			Term:  term,
-			Value: value,
-		},
-	}
 	response, err := api.AppendEntry(ctx, &raftapi.AppendEntryRequest{
 		Term:        term,
 		Leader:      leader,
 		PrevLogId:   prevLogID,
 		PrevLogTerm: term,
-		LogEntry:    &ee,
+		Entry: &raftapi.LogEntry{
+			Term:  term,
+			Value: value,
+		},
 	})
 	if err != nil {
 		return false, NewRaftError(m, err)

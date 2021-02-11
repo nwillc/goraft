@@ -47,5 +47,14 @@ func main() {
 	}
 	srv := server.NewRaftServer(member, config, "")
 	log.WithFields(srv.LogFields()).Infoln("Running server")
+	go func() {
+		for {
+			if srv.GetState() == server.Shutdown {
+				log.WithFields(srv.LogFields()).Infoln("Exiting server")
+				time.Sleep(500 * time.Millisecond)
+				os.Exit(0)
+			}
+		}
+	}()
 	log.Fatalln(srv.Run())
 }

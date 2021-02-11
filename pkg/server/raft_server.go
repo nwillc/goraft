@@ -178,9 +178,16 @@ func (s *RaftServer) RequestVote(_ context.Context, request *raftapi.RequestVote
 	log.WithFields(s.LogFields()).Debugln("Received RequestVote")
 	s.lastHeartbeat = time.Now()
 	term, err := s.getTerm()
-	if err  != nil {
+	if err != nil {
 		log.WithFields(s.LogFields()).Errorln("Could not look up term", err)
 		return nil, model.NewRaftError(&s.member, err)
+	}
+	// If I'm behind the request's term I've lost track
+	if term > request.Term {
+		log.WithFields(s.LogFields()).Warn("My term is ahead of the term of the requested to vote on.")
+		return &raftapi.RequestVoteResponse{
+			Term: term,
+		}, nil
 	}
 	approve := s.votedOn < request.Term
 	if approve {
@@ -219,41 +226,32 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 		return nil, model.NewRaftError(&s.member, err)
 	}
 	if request.PrevLogId == -1 {
-		switch entry := request.LogEntry.(type) {
-		case *raftapi.AppendEntryRequest_Entry:
-			_, err = s.logRepo.Create(entry.Entry.Term, entry.Entry.Value)
-			if err != nil {
-				return nil, model.NewRaftError(&s.member, err)
-			}
-			return &raftapi.AppendEntryResponse{
-				Term:    term,
-				Success: true,
-			}, nil
+		_, err = s.logRepo.Create(request.Entry.Term, request.Entry.Value)
+		if err != nil {
+			return nil, model.NewRaftError(&s.member, err)
 		}
+		return &raftapi.AppendEntryResponse{
+			Term:    term,
+			Success: true,
+		}, nil
 	} else if request.PrevLogId <= maxID {
 		entry, _ := s.logRepo.Read(request.PrevLogId)
 		if entry.Term != request.PrevLogTerm {
 			log.WithFields(s.LogFields()).Warnln("Entry term", entry.Term, "not equal to previous term", request.PrevLogTerm)
 			return &raftapi.AppendEntryResponse{Term: term}, nil
 		}
-		switch x := request.LogEntry.(type) {
-		case *raftapi.AppendEntryRequest_Entry:
-			log.Infoln("Appending Term", x.Entry.Term, "Value", x.Entry.Value)
-			_, _ = s.logRepo.Create(x.Entry.Term, x.Entry.Value)
-		case nil:
+		if request.Entry != nil {
+			log.Infoln("Appending Term", request.Entry.Term, "Value", request.Entry.Value)
+			_, _ = s.logRepo.Create(request.Entry.Term, request.Entry.Value)
+		} else {
 			// No entry
 			log.WithFields(s.LogFields()).Warnln("No entry")
-		default:
-			log.WithFields(s.LogFields()).Errorf("Unknown request log entry type %T", x)
-			return nil, model.NewRaftError(&s.member, err)
 		}
 		log.WithFields(s.LogFields()).Infoln("Returning success")
 		return &raftapi.AppendEntryResponse{Term: term, Success: true}, nil
-	} else {
-		log.WithFields(s.LogFields()).Warnf("Previous ID: %d, MaxID: %d, returning nil", request.PrevLogId, maxID)
-		return &raftapi.AppendEntryResponse{Term: term}, nil
 	}
-	return nil, model.NewRaftError(&s.member, fmt.Errorf("unknown code path"))
+	log.WithFields(s.LogFields()).Warnf("Previous ID: %d, MaxID: %d, returning nil", request.PrevLogId, maxID)
+	return &raftapi.AppendEntryResponse{Term: term}, nil
 }
 
 /*

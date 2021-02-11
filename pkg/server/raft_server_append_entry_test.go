@@ -46,18 +46,15 @@ func (suite *RaftServerAppendEntryTestSuite) TestFirstEntry() {
 	assert.Equal(suite.T(), int64(-1), enrtyNo)
 	term := uint64(0)
 	value := int64(42)
-	entry := &raftapi.AppendEntryRequest_Entry{
-		Entry: &raftapi.LogEntry{
-			Term:  term,
-			Value: value,
-		},
-	}
 	request := &raftapi.AppendEntryRequest{
 		Term:        term,
 		Leader:      "",
 		PrevLogId:   -1,
 		PrevLogTerm: 0,
-		LogEntry:    entry,
+		Entry: &raftapi.LogEntry{
+			Term:  term,
+			Value: value,
+		},
 	}
 	response, err := suite.server.AppendEntry(suite.ctx, request)
 	assert.NoError(suite.T(), err)
@@ -78,18 +75,15 @@ func (suite *RaftServerAppendEntryTestSuite) TestTwoSuccessiveEntries() {
 	assert.Equal(suite.T(), int64(-1), entryNo)
 	term := uint64(0)
 	value := int64(42)
-	entry := &raftapi.AppendEntryRequest_Entry{
-		Entry: &raftapi.LogEntry{
-			Term:  term,
-			Value: value,
-		},
-	}
 	request := &raftapi.AppendEntryRequest{
 		Term:        term,
 		Leader:      "",
 		PrevLogId:   -1,
 		PrevLogTerm: 0,
-		LogEntry:    entry,
+		Entry: &raftapi.LogEntry{
+			Term:  term,
+			Value: value,
+		},
 	}
 	response, err := suite.server.AppendEntry(suite.ctx, request)
 	assert.NoError(suite.T(), err)
@@ -103,18 +97,15 @@ func (suite *RaftServerAppendEntryTestSuite) TestTwoSuccessiveEntries() {
 	assert.Equal(suite.T(), term, logEntry.Term)
 	assert.Equal(suite.T(), value, logEntry.Value)
 	value++
-	entry = &raftapi.AppendEntryRequest_Entry{
-		Entry: &raftapi.LogEntry{
-			Term:  term,
-			Value: value,
-		},
-	}
 	request2 := &raftapi.AppendEntryRequest{
 		Term:        term,
 		Leader:      "",
 		PrevLogId:   0,
 		PrevLogTerm: term,
-		LogEntry:    entry,
+		Entry: &raftapi.LogEntry{
+			Term:  term,
+			Value: value,
+		},
 	}
 	response2, err := suite.server.AppendEntry(suite.ctx, request2)
 	assert.NoError(suite.T(), err)
