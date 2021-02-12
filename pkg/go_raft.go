@@ -52,7 +52,7 @@ func main() {
 			if srv.GetState() == server.Shutdown {
 				log.WithFields(srv.LogFields()).Infoln("Exiting server")
 				time.Sleep(500 * time.Millisecond)
-				os.Exit(0)
+				os.Exit(conf.NormalExit)
 			}
 		}
 	}()
