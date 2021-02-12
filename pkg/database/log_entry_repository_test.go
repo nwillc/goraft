@@ -26,10 +26,12 @@ func TestLogEntryRepositoryTestSuite(t *testing.T) {
 }
 
 func (suite *LogEntryRepositoryTestSuite) TestWriteRead() {
+	truncate(suite.repo)
 	var term uint64 = 64
 	var value int64 = 234
 	entryNo, err := suite.repo.Create(term, value)
 	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), int64(1), entryNo)
 	entry2, err := suite.repo.Read(entryNo)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), term, entry2.Term)
@@ -50,10 +52,11 @@ func (suite *LogEntryRepositoryTestSuite) TestUpdate() {
 }
 
 func (suite *LogEntryRepositoryTestSuite) TestList() {
+	truncate(suite.repo)
 	err := suite.repo.TruncateToEntryNo(-1)
 	assert.NoError(suite.T(), err)
 	entries := 10
-	for i := 0; i < entries; i++ {
+	for i := 1; i <= entries; i++ {
 		_, err = suite.repo.Create(uint64(i), int64(i))
 		assert.NoError(suite.T(), err)
 	}
@@ -62,9 +65,10 @@ func (suite *LogEntryRepositoryTestSuite) TestList() {
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), entries, len(list))
 	for i, entry := range list {
-		assert.Equal(suite.T(), int64(i), entry.EntryNo)
-		assert.Equal(suite.T(), uint64(i), entry.Term)
-		assert.Equal(suite.T(), int64(i), entry.Value)
+		ii := i + 1
+		assert.Equal(suite.T(), int64(ii), entry.EntryNo)
+		assert.Equal(suite.T(), uint64(ii), entry.Term)
+		assert.Equal(suite.T(), int64(ii), entry.Value)
 	}
 }
 
@@ -81,15 +85,22 @@ func (suite *LogEntryRepositoryTestSuite) TestCount() {
 	assert.Equal(suite.T(), count+records, count2)
 }
 
-func (suite *LogEntryRepositoryTestSuite) TestMaxTerm() {
-	maxTerm := 10
-	for i := maxTerm; i > 0; i-- {
-		_, err := suite.repo.Create(uint64(i), int64(i))
+func (suite *LogEntryRepositoryTestSuite) TestLogSize() {
+	var entries uint64 = 10
+	for i := entries; i > 0; i-- {
+		_, err := suite.repo.Create(i, int64(i))
 		assert.NoError(suite.T(), err)
 	}
-	max, err := suite.repo.MaxTerm()
+	size, err := suite.repo.LogSize()
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), uint64(maxTerm), max)
+	assert.Equal(suite.T(), entries, size)
+}
+
+func (suite *LogEntryRepositoryTestSuite) TestLogSizeEmpty() {
+	truncate(suite.repo)
+	size, err := suite.repo.LogSize()
+	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), uint64(0), size)
 }
 
 func (suite *LogEntryRepositoryTestSuite) TestMaxEntryNoEmptyTable() {
@@ -114,7 +125,7 @@ func (suite *LogEntryRepositoryTestSuite) TestMaxEntryNo() {
 	var value int64 = 80
 	id, err := suite.repo.Create(term, value)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(0), id)
+	assert.Equal(suite.T(), int64(1), id)
 	max, err := suite.repo.MaxEntryNo()
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), id, max)

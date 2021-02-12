@@ -42,7 +42,7 @@ type RaftServer struct {
 	lastHeartbeat      time.Time
 	role               Role
 	peers              []model.Member
-	votedOn            uint64
+	votedOn            map[uint64]string
 	databasePath       string
 	electionCountdown  time.Duration
 	heartbeatCountdown time.Duration
@@ -69,7 +69,6 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 		member:             member,
 		lastHeartbeat:      time.Now(),
 		role:               Follower,
-		votedOn:            uint64(0),
 		databasePath:       database,
 		peers:              config.Peers(member.Name),
 		electionCountdown:  config.ElectionCountdown(),
@@ -77,6 +76,7 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 		ctx:                context.Background(),
 		state:              Ready,
 		onExit:             &util.FunctionChain{},
+		votedOn:            map[uint64]string{},
 	}
 	rf.onExit.Add(func() {
 		rf.state = Shutdown
@@ -178,26 +178,21 @@ func (s *RaftServer) RequestVote(_ context.Context, request *raftapi.RequestVote
 	log.WithFields(s.LogFields()).Debugln("Received RequestVote")
 	s.lastHeartbeat = time.Now()
 	term := s.getTerm()
-	// If I'm behind the request's term I've lost track
-	if request.Term < term {
-		log.WithFields(s.LogFields()).Warn("My term is ahead of the term of the requested to vote on.")
-		return &raftapi.RequestVoteResponse{
-			Term: term,
-		}, nil
+	if votedFor, has := s.votedOn[term]; !has || votedFor == request.Candidate {
+		logSize, _ := s.logRepo.LogSize()
+		if term < request.Term || (term == request.Term && logSize < request.LogSize) {
+			s.votedOn[term] = request.Candidate
+			return &raftapi.RequestVoteResponse{
+				Term:     term,
+				Approved: true,
+			}, nil
+		}
 	}
-	approve := s.votedOn < request.Term
-	if approve {
-		s.votedOn = request.Term
-	}
-	return &raftapi.RequestVoteResponse{
-		Term:     term,
-		Approved: approve,
-	}, nil
+	return &raftapi.RequestVoteResponse{Term: term}, nil
 }
 
 // AppendEntry Raft request to append a LogEntry to the log.
 func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntryRequest) (*raftapi.AppendEntryResponse, error) {
-	// TODO handle requests not from leader...?
 	log.WithFields(s.LogFields()).Debugln("Received AppendEntry from", request.Leader)
 	s.lastHeartbeat = time.Now()
 	term := s.getTerm()
@@ -212,37 +207,17 @@ func (s *RaftServer) AppendEntry(_ context.Context, request *raftapi.AppendEntry
 		}
 	}
 	s.leaderID = request.Leader
-	maxID, err := s.logRepo.MaxEntryNo()
-	if err != nil {
-		log.WithFields(s.LogFields()).Errorln("Could not look up MaxEntryNo", err)
-		return nil, model.NewRaftError(&s.member, err)
-	}
-	if request.PrevLogId == -1 {
-		_, err = s.logRepo.Create(request.Entry.Term, request.Entry.Value)
-		if err != nil {
-			return nil, model.NewRaftError(&s.member, err)
-		}
-		return &raftapi.AppendEntryResponse{
-			Term:    term,
-			Success: true,
-		}, nil
-	} else if request.PrevLogId <= maxID {
-		entry, _ := s.logRepo.Read(request.PrevLogId)
-		if entry.Term != request.PrevLogTerm {
-			log.WithFields(s.LogFields()).Warnln("Entry term", entry.Term, "not equal to previous term", request.PrevLogTerm)
-			return &raftapi.AppendEntryResponse{Term: term}, nil
+	size, _ := s.logRepo.LogSize()
+	read, _ := s.logRepo.Read(request.PrevLogId)
+	if request.PrevLogId == -1 || uint64(request.PrevLogId) <= size && read.Term == request.PrevLogTerm {
+		if size > 0 {
+			_ = s.logRepo.TruncateToEntryNo(request.PrevLogId)
 		}
 		if request.Entry != nil {
-			log.Infoln("Appending Term", request.Entry.Term, "Value", request.Entry.Value)
 			_, _ = s.logRepo.Create(request.Entry.Term, request.Entry.Value)
-		} else {
-			// No entry
-			log.WithFields(s.LogFields()).Warnln("No entry")
 		}
-		log.WithFields(s.LogFields()).Infoln("Returning success")
 		return &raftapi.AppendEntryResponse{Term: term, Success: true}, nil
 	}
-	log.WithFields(s.LogFields()).Warnf("Previous ID: %d, MaxID: %d, returning nil", request.PrevLogId, maxID)
 	return &raftapi.AppendEntryResponse{Term: term}, nil
 }
 
@@ -323,8 +298,8 @@ func (s *RaftServer) runElection() bool {
 	term := s.getTerm()
 	term++
 	_ = s.setTerm(term)
-	logSize, _ := s.logRepo.MaxTerm()
-	s.votedOn = term
+	logSize, _ := s.logRepo.LogSize()
+	// s.votedOn = term
 	var votes = 1
 	for _, member := range s.peers {
 		resp, err := member.RequestVote(s.ctx, s.member.Name, term, logSize)
