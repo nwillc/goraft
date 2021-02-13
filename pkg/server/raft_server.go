@@ -370,4 +370,3 @@ func (s *RaftServer) GetRole() Role {
 func (s *RaftServer) GetState() State {
 	return s.state
 }
-
