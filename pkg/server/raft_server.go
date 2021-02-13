@@ -12,7 +12,6 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"net"
-	"sync"
 	"time"
 )
 
@@ -53,7 +52,8 @@ type RaftServer struct {
 	leaderID           string
 	onExit             *util.FunctionChain
 	state              State
-	wg                 sync.WaitGroup
+	stopHeartBeat      util.StopChannel
+	stopHeartMonitor   util.StopChannel
 }
 
 // RaftServer implements fmt.Stringer
@@ -236,6 +236,7 @@ func (s *RaftServer) String() string {
 // Run the RaftServer
 func (s *RaftServer) Run() error {
 	log.WithFields(s.LogFields()).Infoln("Running")
+
 	if err := s.setupRepositories(); err != nil {
 		return err
 	}
@@ -250,63 +251,41 @@ func (s *RaftServer) Run() error {
 		server.Stop()
 	})
 	raftapi.RegisterRaftServiceServer(server, s)
-	s.monitorHeartbeat()
-	s.produceHeartbeat()
 	s.state = Running
+	s.stopHeartBeat = util.RepeatUntilStopped(s.heartbeatCountdown, s.sendHeartBeat)
+	s.onExit.Add(func() {
+		s.stopHeartBeat <- true
+		log.WithFields(s.LogFields()).Infoln("Stopping heartbeats")
+	})
+	s.stopHeartMonitor = util.RepeatUntilStopped(s.electionCountdown/10, s.heartMonitor)
+	s.onExit.Add(func() {
+		s.stopHeartMonitor <- true
+		log.WithFields(s.LogFields()).Infoln("Stopping election monitor")
+	})
 	return server.Serve(listen)
 }
 
-func (s *RaftServer) produceHeartbeat() {
-	timeout := s.heartbeatCountdown
-	log.WithFields(s.LogFields()).Debugln("heartbeat timeout", timeout)
-	s.wg.Add(1)
-	go func() {
-		defer func() {
-			log.WithFields(s.LogFields()).Infoln("No longer producing heartbeats")
-			s.wg.Done()
-		}()
-		for {
-			time.Sleep(timeout)
-			if s.state == Shutdown {
-				return
-			}
-			if s.role == Leader {
-				s.lastHeartbeat = time.Now()
-				for _, member := range s.peers {
-					_ = member.Ping()
-				}
-			}
+func (s *RaftServer) sendHeartBeat() {
+	if s.role == Leader {
+		s.lastHeartbeat = time.Now()
+		for _, member := range s.peers {
+			_ = member.Ping()
 		}
-	}()
+	}
 }
 
-func (s *RaftServer) monitorHeartbeat() {
-	timeout := s.electionCountdown
-	log.WithFields(s.LogFields()).Debugln("election timeout", timeout)
-	s.wg.Add(1)
-	go func() {
-		defer func() {
-			log.WithFields(s.LogFields()).Infoln("No longer monitoring heartbeats")
-			s.wg.Done()
-		}()
-		for {
-			time.Sleep(50 * time.Millisecond)
-			if s.state == Shutdown {
-				return
-			}
-			now := time.Now()
-			if now.Sub(s.lastHeartbeat) > timeout {
-				log.Debugf("Last Heartbeat: %d, now: %d", s.lastHeartbeat.Unix(), now.Unix())
-				log.Debugln("Delta: ", now.Sub(s.lastHeartbeat))
-				s.role = Candidate
-				if s.runElection() {
-					s.lastHeartbeat = time.Now()
-					log.WithFields(s.LogFields()).Infoln("Role now", Leader)
-					s.role = Leader
-				}
-			}
+func (s *RaftServer) heartMonitor() {
+	now := time.Now()
+	if now.Sub(s.lastHeartbeat) > s.electionCountdown {
+		log.Debugf("Last Heartbeat: %d, now: %d", s.lastHeartbeat.Unix(), now.Unix())
+		log.Debugln("Delta: ", now.Sub(s.lastHeartbeat))
+		s.role = Candidate
+		if s.runElection() {
+			s.lastHeartbeat = time.Now()
+			log.WithFields(s.LogFields()).Infoln("Role now", Leader)
+			s.role = Leader
 		}
-	}()
+	}
 }
 
 func (s *RaftServer) runElection() bool {
@@ -394,6 +373,3 @@ func (s *RaftServer) GetState() State {
 	return s.state
 }
 
-func (s *RaftServer) Wait() {
-	s.wg.Wait()
-}

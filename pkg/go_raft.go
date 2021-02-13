@@ -51,5 +51,5 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	srv.Wait()
+	log.WithFields(srv.LogFields()).Infoln("Exiting")
 }
