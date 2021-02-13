@@ -34,3 +34,14 @@ func TestSingleChainRevers(t *testing.T) {
 	fc.InvokeReverse()
 	assert.Equal(t, 0, counter)
 }
+
+func TestHandlesPanic(t *testing.T) {
+	fc := FunctionChain{}
+	counter := 0
+	fc.
+		Add(func() { panic("testing panic") }).
+		Add(func() { counter++ })
+
+	fc.InvokeForward()
+	assert.Equal(t, 1, counter)
+}
