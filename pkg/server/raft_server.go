@@ -53,7 +53,7 @@ type RaftServer struct {
 	leaderID           string
 	onExit             *util.FunctionChain
 	state              State
-	wg 				   sync.WaitGroup
+	wg                 sync.WaitGroup
 }
 
 // RaftServer implements fmt.Stringer
@@ -290,22 +290,22 @@ func (s *RaftServer) monitorHeartbeat() {
 			s.wg.Done()
 		}()
 		for {
-				time.Sleep(50 * time.Millisecond)
-				if s.state == Shutdown {
-					return
-				}
-				now := time.Now()
-				if now.Sub(s.lastHeartbeat) > timeout {
-					log.Debugf("Last Heartbeat: %d, now: %d", s.lastHeartbeat.Unix(), now.Unix())
-					log.Debugln("Delta: ", now.Sub(s.lastHeartbeat))
-					s.role = Candidate
-					if s.runElection() {
-						s.lastHeartbeat = time.Now()
-						log.WithFields(s.LogFields()).Infoln("Role now", Leader)
-						s.role = Leader
-					}
+			time.Sleep(50 * time.Millisecond)
+			if s.state == Shutdown {
+				return
+			}
+			now := time.Now()
+			if now.Sub(s.lastHeartbeat) > timeout {
+				log.Debugf("Last Heartbeat: %d, now: %d", s.lastHeartbeat.Unix(), now.Unix())
+				log.Debugln("Delta: ", now.Sub(s.lastHeartbeat))
+				s.role = Candidate
+				if s.runElection() {
+					s.lastHeartbeat = time.Now()
+					log.WithFields(s.LogFields()).Infoln("Role now", Leader)
+					s.role = Leader
 				}
 			}
+		}
 	}()
 }
 
