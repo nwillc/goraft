@@ -106,11 +106,9 @@ func (s *RaftServer) Ping(_ context.Context, _ *raftapi.Empty) (*raftapi.WhoAmI,
 func (s *RaftServer) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Bool, error) {
 	log.WithFields(s.LogFields()).Warnln("Shutdown")
 	defer func() {
+		s.state = Shutdown
 		s.onExit.InvokeReverse()
 	}()
-	// s.onExit.Add(func() {
-	// 	s.state = Shutdown
-	// })
 	return &raftapi.Bool{Status: true}, nil
 }
 
