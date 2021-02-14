@@ -15,7 +15,7 @@ import (
 
 const (
 	untilRetryDelay = 500 * time.Millisecond
-	untilAttempts   = 20
+	untilAttempts   = 30
 )
 
 type GoRaftTestSuite struct {
