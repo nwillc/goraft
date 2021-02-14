@@ -53,3 +53,11 @@ func (suite *ConfigTestSuite) TestConfigPeers() {
 	}
 	assert.False(suite.T(), found)
 }
+
+func (suite *ConfigTestSuite) TestConfigGetMember() {
+	assert.NotEmpty(suite.T(), suite.config.Members)
+	aMember := suite.config.Members[0].Name
+	member, err := suite.config.GetMember(aMember)
+	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), aMember, member.Name)
+}
