@@ -9,10 +9,14 @@ import (
 
 type ConfigTestSuite struct {
 	suite.Suite
+	config Config
 }
 
 func (suite *ConfigTestSuite) SetupTest() {
 	suite.T().Helper()
+	config, err := ReadConfig("../../" + conf.ConfigFile)
+	assert.NoError(suite.T(), err)
+	suite.config = config
 }
 
 func TestConfigSuite(t *testing.T) {
@@ -25,14 +29,27 @@ func (suite *ConfigTestSuite) TestFailBadFile() {
 }
 
 func (suite *ConfigTestSuite) TestReadConfig() {
-	config, err := ReadConfig("../../" + conf.ConfigFile)
-	assert.NoError(suite.T(), err)
-	assert.Less(suite.T(), 1, config.HeartbeatTimeout)
-	assert.Less(suite.T(), 1, config.ElectionTimeout)
-	assert.Less(suite.T(), 0, config.MinOffset)
-	assert.Less(suite.T(), config.MinOffset, config.MaxOffset)
-	for _, member := range config.Members {
+	assert.Less(suite.T(), 1, suite.config.HeartbeatTimeout)
+	assert.Less(suite.T(), 1, suite.config.ElectionTimeout)
+	assert.Less(suite.T(), 0, suite.config.MinOffset)
+	assert.Less(suite.T(), suite.config.MinOffset, suite.config.MaxOffset)
+	for _, member := range suite.config.Members {
 		assert.NotEmpty(suite.T(), member.Name)
 		assert.Less(suite.T(), uint32(0), member.Port)
 	}
+}
+
+func (suite *ConfigTestSuite) TestConfigPeers() {
+	assert.NotEmpty(suite.T(), suite.config.Members)
+	aMember := suite.config.Members[0].Name
+	peers := suite.config.Peers(aMember)
+	assert.Equal(suite.T(), len(suite.config.Members) - 1, len(peers))
+	var found bool
+	for _, member := range peers {
+		if member.Name == aMember {
+			found = true
+			break
+		}
+	}
+	assert.False(suite.T(), found)
 }
