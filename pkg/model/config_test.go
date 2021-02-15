@@ -43,7 +43,7 @@ func (suite *ConfigTestSuite) TestConfigPeers() {
 	assert.NotEmpty(suite.T(), suite.config.Members)
 	aMember := suite.config.Members[0].Name
 	peers := suite.config.Peers(aMember)
-	assert.Equal(suite.T(), len(suite.config.Members) - 1, len(peers))
+	assert.Equal(suite.T(), len(suite.config.Members)-1, len(peers))
 	var found bool
 	for _, member := range peers {
 		if member.Name == aMember {
@@ -60,4 +60,11 @@ func (suite *ConfigTestSuite) TestConfigGetMember() {
 	member, err := suite.config.GetMember(aMember)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), aMember, member.Name)
+}
+
+func (suite *ConfigTestSuite) TestConfigGetMemberNotPresent() {
+	assert.NotEmpty(suite.T(), suite.config.Members)
+	aMember := "foo"
+	_, err := suite.config.GetMember(aMember)
+	assert.Error(suite.T(), err)
 }
