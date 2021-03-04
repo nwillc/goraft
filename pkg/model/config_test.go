@@ -2,7 +2,6 @@ package model
 
 import (
 	"github.com/nwillc/goraft/conf"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -15,7 +14,7 @@ type ConfigTestSuite struct {
 func (suite *ConfigTestSuite) SetupTest() {
 	suite.T().Helper()
 	config, err := ReadConfig("../../" + conf.ConfigFile)
-	assert.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 	suite.config = config
 }
 
@@ -23,27 +22,27 @@ func TestConfigSuite(t *testing.T) {
 	suite.Run(t, new(ConfigTestSuite))
 }
 
-func (suite *ConfigTestSuite) TestFailBadFile() {
+func (suite *ConfigTestSuite) Test_FailBadFile() {
 	_, err := ReadConfig("foo.json")
-	assert.Error(suite.T(), err)
+	suite.Error(err)
 }
 
-func (suite *ConfigTestSuite) TestReadConfig() {
-	assert.Less(suite.T(), 1, suite.config.HeartbeatTimeout)
-	assert.Less(suite.T(), 1, suite.config.ElectionTimeout)
-	assert.Less(suite.T(), 0, suite.config.MinOffset)
-	assert.Less(suite.T(), suite.config.MinOffset, suite.config.MaxOffset)
+func (suite *ConfigTestSuite) Test_ReadConfig() {
+	suite.Less(1, suite.config.HeartbeatTimeout)
+	suite.Less(1, suite.config.ElectionTimeout)
+	suite.Less(0, suite.config.MinOffset)
+	suite.Less(suite.config.MinOffset, suite.config.MaxOffset)
 	for _, member := range suite.config.Members {
-		assert.NotEmpty(suite.T(), member.Name)
-		assert.Less(suite.T(), uint32(0), member.Port)
+		suite.NotEmpty(member.Name)
+		suite.Less(uint32(0), member.Port)
 	}
 }
 
-func (suite *ConfigTestSuite) TestConfigPeers() {
-	assert.NotEmpty(suite.T(), suite.config.Members)
+func (suite *ConfigTestSuite) Test_ConfigPeers() {
+	suite.NotEmpty(suite.config.Members)
 	aMember := suite.config.Members[0].Name
 	peers := suite.config.Peers(aMember)
-	assert.Equal(suite.T(), len(suite.config.Members)-1, len(peers))
+	suite.Equal(len(suite.config.Members)-1, len(peers))
 	var found bool
 	for _, member := range peers {
 		if member.Name == aMember {
@@ -51,20 +50,20 @@ func (suite *ConfigTestSuite) TestConfigPeers() {
 			break
 		}
 	}
-	assert.False(suite.T(), found)
+	suite.False(found)
 }
 
-func (suite *ConfigTestSuite) TestConfigGetMember() {
-	assert.NotEmpty(suite.T(), suite.config.Members)
+func (suite *ConfigTestSuite) Test_ConfigGetMember() {
+	suite.NotEmpty(suite.config.Members)
 	aMember := suite.config.Members[0].Name
 	member, err := suite.config.GetMember(aMember)
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), aMember, member.Name)
+	suite.NoError(err)
+	suite.Equal(aMember, member.Name)
 }
 
-func (suite *ConfigTestSuite) TestConfigGetMemberNotPresent() {
-	assert.NotEmpty(suite.T(), suite.config.Members)
+func (suite *ConfigTestSuite) Test_ConfigGetMemberNotPresent() {
+	suite.NotEmpty(suite.config.Members)
 	aMember := "foo"
 	_, err := suite.config.GetMember(aMember)
-	assert.Error(suite.T(), err)
+	suite.Error(err)
 }

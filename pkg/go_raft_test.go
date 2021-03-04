@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/nwillc/goraft/model"
 	"github.com/nwillc/goraft/raftapi"
 	"github.com/nwillc/goraft/server"
@@ -31,64 +32,64 @@ func TestGoRaftTestSuite(t *testing.T) {
 	suite.Run(t, new(GoRaftTestSuite))
 }
 
-func (suite *GoRaftTestSuite) TestSingleServer() {
+func (suite *GoRaftTestSuite) Test_SingleServer() {
 	svr := startEmbedded(suite.T(), "one")
-	assert.NotNil(suite.T(), svr)
+	suite.NotNil(svr)
 	time.Sleep(10 * time.Second)
-	_, err := svr.Shutdown(nil, nil)
-	assert.NoError(suite.T(), err)
+	_, err := svr.Shutdown(context.TODO(), nil)
+	suite.NoError(err)
 	time.Sleep(5 * time.Second)
 }
 
-func (suite *GoRaftTestSuite) TestAllServer() {
+func (suite *GoRaftTestSuite) Test_AllServer() {
 	_ = startRaft(suite.T())
 }
 
-func (suite *GoRaftTestSuite) TestBasicHappyPathLogEntries() {
+func (suite *GoRaftTestSuite) Test_BasicHappyPathLogEntries() {
 	servers := startRaft(suite.T())
 	leader := hasLeader(servers)
-	assert.NotNil(suite.T(), leader)
+	suite.NotNil(leader)
 	v := int64(42)
-	success, err := leader.AppendValue(nil, &raftapi.Value{Value: v})
-	assert.NoError(suite.T(), err)
-	assert.True(suite.T(), success.Status)
-	success, err = leader.AppendValue(nil, &raftapi.Value{Value: v + 1})
-	assert.NoError(suite.T(), err)
-	assert.True(suite.T(), success.Status)
+	success, err := leader.AppendValue(context.TODO(), &raftapi.Value{Value: v})
+	suite.NoError(err)
+	suite.True(success.Status)
+	success, err = leader.AppendValue(context.TODO(), &raftapi.Value{Value: v + 1})
+	suite.NoError(err)
+	suite.True(success.Status)
 	for _, svr := range servers {
-		response, err := svr.ListEntries(nil, nil)
-		assert.NoError(suite.T(), err)
-		assert.Len(suite.T(), response.Entries, 2)
-		assert.Equal(suite.T(), v, response.Entries[0].Value)
-		assert.Equal(suite.T(), v+1, response.Entries[1].Value)
+		response, err := svr.ListEntries(context.TODO(), nil)
+		suite.NoError(err)
+		suite.Len(response.Entries, 2)
+		suite.Equal(v, response.Entries[0].Value)
+		suite.Equal(v+1, response.Entries[1].Value)
 	}
 }
 
-func (suite *GoRaftTestSuite) TestBasicMemberDownLogEntries() {
+func (suite *GoRaftTestSuite) Test_BasicMemberDownLogEntries() {
 	servers := startRaft(suite.T())
 	leader := hasLeader(servers)
-	assert.NotNil(suite.T(), leader)
+	suite.NotNil(leader)
 	v := int64(42)
-	success, err := leader.AppendValue(nil, &raftapi.Value{Value: v})
-	assert.NoError(suite.T(), err)
-	assert.True(suite.T(), success.Status)
+	success, err := leader.AppendValue(context.TODO(), &raftapi.Value{Value: v})
+	suite.NoError(err)
+	suite.True(success.Status)
 	member := nonLeader(servers)
-	member.Shutdown(nil, nil)
-	assert.True(suite.T(), until(untilAttempts, untilRetryDelay, func() bool {
+	_, _ = member.Shutdown(context.TODO(), nil)
+	suite.True(until(untilAttempts, untilRetryDelay, func() bool {
 		return member.GetState() == server.Shutdown
 	}))
-	success, err = leader.AppendValue(nil, &raftapi.Value{Value: v + 1})
-	assert.NoError(suite.T(), err)
-	assert.True(suite.T(), success.Status)
+	success, err = leader.AppendValue(context.TODO(), &raftapi.Value{Value: v + 1})
+	suite.NoError(err)
+	suite.True(success.Status)
 	for _, svr := range servers {
 		if svr.GetState() == server.Shutdown {
 			continue
 		}
-		response, err := svr.ListEntries(nil, nil)
-		assert.NoError(suite.T(), err)
-		assert.Len(suite.T(), response.Entries, 2)
-		assert.Equal(suite.T(), v, response.Entries[0].Value)
-		assert.Equal(suite.T(), v+1, response.Entries[1].Value)
+		response, err := svr.ListEntries(context.TODO(), nil)
+		suite.NoError(err)
+		suite.Len(response.Entries, 2)
+		suite.Equal(v, response.Entries[0].Value)
+		suite.Equal(v+1, response.Entries[1].Value)
 	}
 }
 
@@ -103,7 +104,7 @@ func startRaft(t *testing.T) []*server.RaftServer {
 	assert.True(t, until(untilAttempts, untilRetryDelay, func() bool { return hasLeader(servers) != nil }))
 	t.Cleanup(func() {
 		for _, svr := range servers {
-			_, _ = svr.Shutdown(nil, nil)
+			_, _ = svr.Shutdown(context.TODO(), nil)
 		}
 	})
 	return servers

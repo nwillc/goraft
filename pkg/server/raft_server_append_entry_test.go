@@ -6,7 +6,6 @@ import (
 	"github.com/nwillc/goraft/model"
 	"github.com/nwillc/goraft/raftapi"
 	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"os"
@@ -22,16 +21,16 @@ type RaftServerAppendEntryTestSuite struct {
 func (suite *RaftServerAppendEntryTestSuite) SetupTest() {
 	suite.T().Helper()
 	config, err := model.ReadConfig("../../" + conf.ConfigFile)
-	assert.NoError(suite.T(), err)
+	suite.NoError(err)
 	member := config.Members[0]
 	tempDB, err := ioutil.TempFile("", "test*.db")
-	assert.NoError(suite.T(), err)
+	suite.NoError(err)
 	suite.T().Cleanup(func() {
 		_ = os.Remove(tempDB.Name())
 	})
 	suite.server = NewRaftServer(member, config, tempDB.Name())
 	err = suite.server.setupRepositories()
-	assert.NoError(suite.T(), err)
+	suite.NoError(err)
 	suite.ctx = context.Background()
 	log.SetLevel(log.WarnLevel)
 }
@@ -40,10 +39,10 @@ func TestRaftServerAppendEntrySuite(t *testing.T) {
 	suite.Run(t, new(RaftServerAppendEntryTestSuite))
 }
 
-func (suite *RaftServerAppendEntryTestSuite) TestFirstEntry() {
+func (suite *RaftServerAppendEntryTestSuite) Test_FirstEntry() {
 	enrtyNo, err := suite.server.logRepo.MaxEntryNo()
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(-1), enrtyNo)
+	suite.NoError(err)
+	suite.Equal(int64(-1), enrtyNo)
 	term := uint64(0)
 	value := int64(42)
 	request := &raftapi.AppendEntryRequest{
@@ -57,22 +56,22 @@ func (suite *RaftServerAppendEntryTestSuite) TestFirstEntry() {
 		},
 	}
 	response, err := suite.server.AppendEntry(suite.ctx, request)
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), true, response.Success)
-	assert.Equal(suite.T(), term, response.Term)
+	suite.NoError(err)
+	suite.Equal(true, response.Success)
+	suite.Equal(term, response.Term)
 	enrtyNo, err = suite.server.logRepo.MaxEntryNo()
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(1), enrtyNo)
+	suite.NoError(err)
+	suite.Equal(int64(1), enrtyNo)
 	logEntry, err := suite.server.logRepo.Read(enrtyNo)
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), term, logEntry.Term)
-	assert.Equal(suite.T(), value, logEntry.Value)
+	suite.NoError(err)
+	suite.Equal(term, logEntry.Term)
+	suite.Equal(value, logEntry.Value)
 }
 
-func (suite *RaftServerAppendEntryTestSuite) TestTwoSuccessiveEntries() {
+func (suite *RaftServerAppendEntryTestSuite) Test_TwoSuccessiveEntries() {
 	entryNo, err := suite.server.logRepo.MaxEntryNo()
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(-1), entryNo)
+	suite.NoError(err)
+	suite.Equal(int64(-1), entryNo)
 	previousLogEntry := int64(-1)
 	term := uint64(0)
 	value := int64(42)
@@ -87,16 +86,16 @@ func (suite *RaftServerAppendEntryTestSuite) TestTwoSuccessiveEntries() {
 		},
 	}
 	response, err := suite.server.AppendEntry(suite.ctx, request)
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), true, response.Success)
-	assert.Equal(suite.T(), term, response.Term)
+	suite.NoError(err)
+	suite.Equal(true, response.Success)
+	suite.Equal(term, response.Term)
 	entryNo, err = suite.server.logRepo.MaxEntryNo()
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(1), entryNo)
+	suite.NoError(err)
+	suite.Equal(int64(1), entryNo)
 	logEntry, err := suite.server.logRepo.Read(entryNo)
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), term, logEntry.Term)
-	assert.Equal(suite.T(), value, logEntry.Value)
+	suite.NoError(err)
+	suite.Equal(term, logEntry.Term)
+	suite.Equal(value, logEntry.Value)
 	value++
 	request2 := &raftapi.AppendEntryRequest{
 		Term:        term,
@@ -109,13 +108,13 @@ func (suite *RaftServerAppendEntryTestSuite) TestTwoSuccessiveEntries() {
 		},
 	}
 	response2, err := suite.server.AppendEntry(suite.ctx, request2)
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), true, response2.Success)
-	assert.Equal(suite.T(), term, response2.Term)
+	suite.NoError(err)
+	suite.Equal(true, response2.Success)
+	suite.Equal(term, response2.Term)
 	entries, err := suite.server.ListEntries(suite.ctx, &raftapi.Empty{})
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), 2, len(entries.Entries))
+	suite.NoError(err)
+	suite.Equal(2, len(entries.Entries))
 	for i, entry := range entries.Entries {
-		assert.Equal(suite.T(), int64(42+i), entry.Value)
+		suite.Equal(int64(42+i), entry.Value)
 	}
 }

@@ -50,7 +50,7 @@ type RaftServer struct {
 	logRepo            *database.LogEntryRepository
 	ctx                context.Context
 	leaderID           string
-	onExit             *util.FunctionChain
+	onExit             *util.FunctionStack
 	state              State
 	stopHeartBeat      util.StopChannel
 	stopHeartMonitor   util.StopChannel
@@ -77,10 +77,9 @@ func NewRaftServer(member model.Member, config model.Config, database string) *R
 		heartbeatCountdown: config.HeartbeatCountDown(),
 		ctx:                context.Background(),
 		state:              Ready,
-		onExit:             &util.FunctionChain{},
 		votedOn:            map[uint64]string{},
 	}
-	rf.onExit.Add(func() {
+	rf.onExit = rf.onExit.Append(func() {
 		rf.state = Shutdown
 		log.WithFields(rf.LogFields()).Infoln("State set to", rf.state)
 	})
@@ -107,7 +106,7 @@ func (s *RaftServer) Shutdown(_ context.Context, _ *raftapi.Empty) (*raftapi.Boo
 	log.WithFields(s.LogFields()).Warnln("Shutdown")
 	defer func() {
 		s.state = Shutdown
-		s.onExit.InvokeReverse()
+		s.onExit.Invoke()
 	}()
 	return &raftapi.Bool{Status: true}, nil
 }
@@ -243,7 +242,7 @@ func (s *RaftServer) Run() error {
 		return err
 	}
 	server := grpc.NewServer()
-	s.onExit = s.onExit.Add(func() {
+	s.onExit = s.onExit.Append(func() {
 		log.WithFields(s.LogFields()).Infoln("Stopping grpc")
 		s.state = Shutdown
 		server.Stop()
@@ -251,12 +250,12 @@ func (s *RaftServer) Run() error {
 	raftapi.RegisterRaftServiceServer(server, s)
 	s.state = Running
 	s.stopHeartBeat = util.RepeatUntilStopped(s.heartbeatCountdown, s.sendHeartBeat)
-	s.onExit.Add(func() {
+	s.onExit.Append(func() {
 		s.stopHeartBeat <- true
 		log.WithFields(s.LogFields()).Infoln("Stopping heartbeats")
 	})
 	s.stopHeartMonitor = util.RepeatUntilStopped(s.electionCountdown/10, s.heartMonitor)
-	s.onExit.Add(func() {
+	s.onExit.Append(func() {
 		s.stopHeartMonitor <- true
 		log.WithFields(s.LogFields()).Infoln("Stopping election monitor")
 	})
@@ -332,7 +331,7 @@ func (s *RaftServer) setupRepositories() error {
 	}
 	s.statusRepo = sRepo
 	s.logRepo = lRepo
-	s.onExit = s.onExit.Add(func() {
+	s.onExit = s.onExit.Append(func() {
 		log.WithFields(s.LogFields()).Infoln("Closing database")
 		sqlDb, _ := db.DB()
 		_ = sqlDb.Close()
