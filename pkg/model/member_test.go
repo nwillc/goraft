@@ -17,7 +17,7 @@ func TestMember(t *testing.T) {
 		addresss string
 	}{
 		{
-			name: "One1",
+			name: "Test_One1",
 			fields: fields{
 				Name: "One",
 				Port: uint32(1),
@@ -26,7 +26,7 @@ func TestMember(t *testing.T) {
 			addresss: ":1",
 		},
 		{
-			name: "Two1",
+			name: "Test_Two1",
 			fields: fields{
 				Name: "Two",
 				Port: uint32(1),
@@ -35,7 +35,7 @@ func TestMember(t *testing.T) {
 			addresss: ":1",
 		},
 		{
-			name: "Three4057",
+			name: "Test_Three4057",
 			fields: fields{
 				Name: "Three",
 				Port: uint32(4057),

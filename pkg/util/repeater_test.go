@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func TestLooper(t *testing.T) {
+func Test_Looper(t *testing.T) {
 	count := 0
 	stopper := RepeatUntilStopped(10*time.Millisecond, func() {
 		count++
